@@ -24,23 +24,59 @@ export class RoadNetwork {
     promenadeMesh.receiveShadow = true
     this.group.add(promenadeMesh)
 
-    // Promenade Sea-Facing Stone Balustrade / Railing (at X: -23.8 along the beach edge)
-    const railing = new THREE.Mesh(materials.boxGeometry, railingMat)
-    railing.scale.set(0.4, 0.9, 220)
-    railing.position.set(-23.8, 0.7, 0)
-    railing.castShadow = true
-    this.group.add(railing)
+    // Promenade Sea-Facing Stone Balustrade / Railing with pedestrian and vehicle access openings:
+    // - Central Grand Beach Stairway opening at Z in [-6, 6] (12m opening)
+    // - South Beach access opening at Z in [-43, -37] (6m opening)
+    // - North Beach access opening at Z in [17, 23] (6m opening)
+    // - North Harbour Road access opening at Z in [44, 56] (12m opening for harbour connection)
+    const railingSegments: [number, number, string][] = [
+      [-76.5, 67, 'Promenade_Railing_SouthEnd'], // Z: -110 to -43 (length 67)
+      [-21.5, 31, 'Promenade_Railing_MidSouth'], // Z: -37 to -6 (length 31)
+      [11.5, 11, 'Promenade_Railing_MidNorth'],  // Z: 6 to 17 (length 11)
+      [33.5, 21, 'Promenade_Railing_HarbourSouth'], // Z: 23 to 44 (length 21)
+      [83.0, 54, 'Promenade_Railing_NorthEnd'],  // Z: 56 to 110 (length 54)
+    ]
 
-    DistrictHelper.registerBoxCollider(
-      collisionSystem,
-      -23.8,
-      0.7,
-      0,
-      0.5,
-      1.1,
-      220,
-      'Promenade_Safety_Railing'
-    )
+    for (const [cz, len, colName] of railingSegments) {
+      const railSeg = new THREE.Mesh(materials.boxGeometry, railingMat)
+      railSeg.scale.set(0.4, 0.9, len)
+      railSeg.position.set(-23.8, 0.7, cz)
+      railSeg.castShadow = true
+      this.group.add(railSeg)
+
+      DistrictHelper.registerBoxCollider(
+        collisionSystem,
+        -23.8,
+        0.7,
+        cz,
+        0.5,
+        1.1,
+        len,
+        colName
+      )
+    }
+
+    // Decorative balustrade end pillars at each pedestrian and road opening
+    const openingPillars = [-43, -37, -6, 6, 17, 23, 44, 56]
+    for (let p = 0; p < openingPillars.length; p++) {
+      const pz = openingPillars[p]
+      const pillar = new THREE.Mesh(materials.boxGeometry, railingMat)
+      pillar.scale.set(0.65, 1.15, 0.65)
+      pillar.position.set(-23.8, 0.75, pz)
+      pillar.castShadow = true
+      this.group.add(pillar)
+
+      DistrictHelper.registerBoxCollider(
+        collisionSystem,
+        -23.8,
+        0.75,
+        pz,
+        0.7,
+        1.2,
+        0.7,
+        `Promenade_Gate_Pillar_${p}`
+      )
+    }
 
     // 2. Main Coastal Boulevard (North-South 2-lane road parallel to promenade, X: -10, Z: -110 to 110)
     const coastalBlvd = new THREE.Mesh(materials.boxGeometry, roadMat)
@@ -83,23 +119,84 @@ export class RoadNetwork {
     marketRoad.receiveShadow = true
     this.group.add(marketRoad)
 
-    // 6. Promenade Ocean-Facing Benches & Streetlamps
+    // 6. Market Central Access Road (North-South, connecting Central Blvd Z: 6 directly to Bazaar St Z: 20 at X: 38)
+    const marketCentralAccess = new THREE.Mesh(materials.boxGeometry, roadMat)
+    marketCentralAccess.scale.set(14, 0.05, 14)
+    marketCentralAccess.position.set(38, 0.027, 13)
+    marketCentralAccess.receiveShadow = true
+    this.group.add(marketCentralAccess)
+
+    const marketSideEast = new THREE.Mesh(materials.boxGeometry, sidewalkMat)
+    marketSideEast.scale.set(2, 0.2, 14)
+    marketSideEast.position.set(46, 0.1, 13)
+    marketSideEast.receiveShadow = true
+    this.group.add(marketSideEast)
+
+    const marketSideWest = new THREE.Mesh(materials.boxGeometry, sidewalkMat)
+    marketSideWest.scale.set(2, 0.2, 14)
+    marketSideWest.position.set(30, 0.1, 13)
+    marketSideWest.receiveShadow = true
+    this.group.add(marketSideWest)
+
+    // 7. Residential North-South Connector Boulevard (X: 12, Z: -6 to -50, width: 10m)
+    const resConnector = new THREE.Mesh(materials.boxGeometry, roadMat)
+    resConnector.scale.set(10, 0.05, 44)
+    resConnector.position.set(12, 0.026, -28)
+    resConnector.receiveShadow = true
+    this.group.add(resConnector)
+
+    const resConnSideEast = new THREE.Mesh(materials.boxGeometry, sidewalkMat)
+    resConnSideEast.scale.set(2, 0.2, 44)
+    resConnSideEast.position.set(18, 0.1, -28)
+    resConnSideEast.receiveShadow = true
+    this.group.add(resConnSideEast)
+
+    const resConnSideWest = new THREE.Mesh(materials.boxGeometry, sidewalkMat)
+    resConnSideWest.scale.set(2, 0.2, 44)
+    resConnSideWest.position.set(6, 0.1, -28)
+    resConnSideWest.receiveShadow = true
+    this.group.add(resConnSideWest)
+
+    // 8. Promenade South to Residential Avenue Connector (X: -10 to 10, Z: -50, width: 10m)
+    const resSouthLink = new THREE.Mesh(materials.boxGeometry, roadMat)
+    resSouthLink.scale.set(20, 0.05, 10)
+    resSouthLink.position.set(0, 0.026, -50)
+    resSouthLink.receiveShadow = true
+    this.group.add(resSouthLink)
+
+    const resSouthSideN = new THREE.Mesh(materials.boxGeometry, sidewalkMat)
+    resSouthSideN.scale.set(20, 0.2, 2.5)
+    resSouthSideN.position.set(0, 0.1, -43.75)
+    resSouthSideN.receiveShadow = true
+    this.group.add(resSouthSideN)
+
+    const resSouthSideS = new THREE.Mesh(materials.boxGeometry, sidewalkMat)
+    resSouthSideS.scale.set(20, 0.2, 2.5)
+    resSouthSideS.position.set(0, 0.1, -56.25)
+    resSouthSideS.receiveShadow = true
+    this.group.add(resSouthSideS)
+
+    // 9. Promenade Ocean-Facing Benches & Streetlamps
     for (let z = -90; z <= 90; z += 24) {
-      // Ocean-facing bench
-      const bench = DistrictHelper.addStaticBox(
-        this.group,
-        collisionSystem,
-        materials,
-        -22.5,
-        0.35,
-        z,
-        1.0,
-        0.5,
-        2.2,
-        woodMat,
-        `Promenade_Bench_${z}`
-      )
-      bench.rotation.y = Math.PI / 2
+      // Skip bench if within or near pedestrian beach access openings
+      const nearOpening =
+        Math.abs(z) <= 8 || (z >= -46 && z <= -34) || (z >= 14 && z <= 26)
+      if (!nearOpening) {
+        const bench = DistrictHelper.addStaticBox(
+          this.group,
+          collisionSystem,
+          materials,
+          -22.5,
+          0.35,
+          z,
+          1.0,
+          0.5,
+          2.2,
+          woodMat,
+          `Promenade_Bench_${z}`
+        )
+        bench.rotation.y = Math.PI / 2
+      }
 
       // Promenade Streetlamp
       DistrictHelper.addStreetLamp(

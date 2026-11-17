@@ -31,6 +31,7 @@ export const GameCanvas: React.FC = () => {
     // Instantiate modular engine with ONLY the selected character (preventing loading both models)
     const engine = new Engine(container, selectedCharacter)
     engineRef.current = engine
+    ;(window as unknown as { __CTC_ENGINE__: Engine | null }).__CTC_ENGINE__ = engine
 
     // Initialize objectives
     setObjectives([...engine.missionSystem.getObjectives()])
@@ -68,6 +69,7 @@ export const GameCanvas: React.FC = () => {
       unsubObjectives()
       engine.dispose()
       engineRef.current = null
+      ;(window as unknown as { __CTC_ENGINE__: Engine | null }).__CTC_ENGINE__ = null
     }
   }, [selectedCharacter])
 

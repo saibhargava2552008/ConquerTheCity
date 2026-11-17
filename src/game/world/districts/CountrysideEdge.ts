@@ -34,19 +34,123 @@ export class CountrysideEdge {
     this.group.add(highway)
 
     // 3. Highway Border Outpost & Toll Booth (X: 95, Z: 0)
-    // Checkpoint cabin building (North side of highway at Z: 9)
+    // Accessible Checkpoint Cabin Building (North side of highway at Z: 9.25)
+    // Cabin Interior Floor (Walkable at Y = 0.15m)
+    DistrictHelper.addStaticBox(
+      this.group,
+      collisionSystem,
+      materials,
+      95,
+      0.075,
+      9.25,
+      5.6,
+      0.15,
+      4.2,
+      materials.getSidewalkMaterial(),
+      'Outpost_Cabin_Floor'
+    )
+
+    // Cabin North Back Wall
     DistrictHelper.addStaticBox(
       this.group,
       collisionSystem,
       materials,
       95,
       2.0,
-      9,
-      6.0,
-      4.0,
-      4.5,
+      11.25,
+      5.6,
+      3.8,
+      0.4,
       outpostMat,
-      'Outpost_Checkpoint_Cabin'
+      'Outpost_Cabin_Wall_North'
+    )
+
+    // Cabin East Wall
+    DistrictHelper.addStaticBox(
+      this.group,
+      collisionSystem,
+      materials,
+      97.6,
+      2.0,
+      9.25,
+      0.4,
+      3.8,
+      4.2,
+      outpostMat,
+      'Outpost_Cabin_Wall_East'
+    )
+
+    // Cabin West Wall
+    DistrictHelper.addStaticBox(
+      this.group,
+      collisionSystem,
+      materials,
+      92.4,
+      2.0,
+      9.25,
+      0.4,
+      3.8,
+      4.2,
+      outpostMat,
+      'Outpost_Cabin_Wall_West'
+    )
+
+    // Cabin South Front Wall with Accessible Doorway (Door opening at X: [94.1, 95.9])
+    DistrictHelper.addStaticBox(
+      this.group,
+      collisionSystem,
+      materials,
+      93.2,
+      2.0,
+      7.25,
+      1.8,
+      3.8,
+      0.4,
+      outpostMat,
+      'Outpost_Cabin_Wall_South_W'
+    )
+
+    DistrictHelper.addStaticBox(
+      this.group,
+      collisionSystem,
+      materials,
+      96.8,
+      2.0,
+      7.25,
+      1.8,
+      3.8,
+      0.4,
+      outpostMat,
+      'Outpost_Cabin_Wall_South_E'
+    )
+
+    DistrictHelper.addStaticBox(
+      this.group,
+      collisionSystem,
+      materials,
+      95.0,
+      3.3,
+      7.25,
+      1.8,
+      1.2,
+      0.4,
+      outpostMat,
+      'Outpost_Cabin_Door_Header'
+    )
+
+    // Cabin Doorstep (gentle step-up from road sidewalk)
+    DistrictHelper.addStaticBox(
+      this.group,
+      collisionSystem,
+      materials,
+      95.0,
+      0.075,
+      6.85,
+      2.0,
+      0.15,
+      0.6,
+      materials.getSidewalkMaterial(),
+      'Outpost_Cabin_Doorstep'
     )
 
     // Overhanging canopy over the highway
@@ -56,24 +160,64 @@ export class CountrysideEdge {
     tollRoof.castShadow = true
     this.group.add(tollRoof)
 
-    // Highway support pillars
-    for (const sz of [-7, 0, 7]) {
+    // Highway support pillars placed at canopy corners (leaving roadway lanes and cabin entrance 100% open)
+    const canopyPillars: [number, number][] = [
+      [91.5, -6.5],
+      [98.5, -6.5],
+      [91.5, 6.5],
+      [98.5, 6.5],
+    ]
+
+    for (let cp = 0; cp < canopyPillars.length; cp++) {
+      const [px, pz] = canopyPillars[cp]
       const pillar = new THREE.Mesh(materials.cylinderGeometry, barrierMat)
       pillar.scale.set(0.18, 4.2, 0.18)
-      pillar.position.set(95, 2.1, sz)
+      pillar.position.set(px, 2.1, pz)
       pillar.castShadow = true
       this.group.add(pillar)
       DistrictHelper.registerBoxCollider(
         collisionSystem,
-        95,
+        px,
         2.1,
-        sz,
-        0.5,
+        pz,
+        0.4,
         4.2,
-        0.5,
-        `Toll_Pillar_${sz}`
+        0.4,
+        `Toll_Canopy_Pillar_${cp}`
       )
     }
+
+    // Narrow central toll island divider with pillar (leaving wide driving/walking lanes on both sides)
+    const tollIsland = new THREE.Mesh(materials.boxGeometry, materials.getSidewalkMaterial())
+    tollIsland.scale.set(3.0, 0.25, 0.8)
+    tollIsland.position.set(95, 0.125, 0)
+    this.group.add(tollIsland)
+    DistrictHelper.registerBoxCollider(
+      collisionSystem,
+      95,
+      0.125,
+      0,
+      3.0,
+      0.25,
+      0.8,
+      'Toll_Island_Divider'
+    )
+
+    const centerPillar = new THREE.Mesh(materials.cylinderGeometry, barrierMat)
+    centerPillar.scale.set(0.18, 4.2, 0.18)
+    centerPillar.position.set(95, 2.1, 0)
+    centerPillar.castShadow = true
+    this.group.add(centerPillar)
+    DistrictHelper.registerBoxCollider(
+      collisionSystem,
+      95,
+      2.1,
+      0,
+      0.45,
+      4.2,
+      0.45,
+      'Toll_Center_Pillar'
+    )
 
     // Directional Highway Signboard ("VARDHAN CITY -> 42 KM | SEAVIEW TOWN")
     const signBoard = new THREE.Mesh(materials.boxGeometry, signMat)

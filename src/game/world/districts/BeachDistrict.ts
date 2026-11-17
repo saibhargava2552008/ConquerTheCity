@@ -37,31 +37,96 @@ export class BeachDistrict {
     // 3. Deep Water Boundary Wall (Invisible safety collider at X: -62 to prevent falling into deep abyss)
     DistrictHelper.registerBoxCollider(collisionSystem, -62, 5, 0, 4, 14, 280, 'Ocean_Safety_Barrier')
 
-    // 4. Wooden Beach Boardwalk / Pier access ramp
-    DistrictHelper.addStaticBox(
+    // 4. Accessible Wooden Beach Boardwalks & Stairways connecting Promenade to the Sand
+    // 4a. Central Grand Beach Stairway (at Z: 0, 10m wide gentle stairs down from Promenade curb)
+    DistrictHelper.addStairs(
       this.group,
       collisionSystem,
       materials,
-      -36,
-      0.15,
-      -40,
-      12,
-      0.3,
-      3.2,
+      -23.5,
+      0.0,
+      0,
+      10.0,
+      0.25,
+      7.0,
+      2,
+      'X-',
       woodMat,
-      'Beach_Boardwalk_South'
+      'Beach_Grand_Stairs_Central'
     )
 
     DistrictHelper.addStaticBox(
       this.group,
       collisionSystem,
       materials,
-      -36,
+      -32.5,
+      0.075,
+      0,
+      5.0,
       0.15,
+      10.0,
+      woodMat,
+      'Beach_Landing_Central'
+    )
+
+    // 4b. South Beach Boardwalk Ramp & Stairway (at Z: -40, connecting to South Promenade opening)
+    DistrictHelper.addStairs(
+      this.group,
+      collisionSystem,
+      materials,
+      -23.5,
+      0.0,
+      -40,
+      4.5,
+      0.25,
+      5.0,
+      2,
+      'X-',
+      woodMat,
+      'Beach_Stairs_South'
+    )
+
+    DistrictHelper.addStaticBox(
+      this.group,
+      collisionSystem,
+      materials,
+      -36.5,
+      0.075,
+      -40,
+      15.0,
+      0.15,
+      4.5,
+      woodMat,
+      'Beach_Boardwalk_South'
+    )
+
+    // 4c. North Beach Boardwalk Ramp & Stairway (at Z: 20, connecting to North Promenade opening)
+    DistrictHelper.addStairs(
+      this.group,
+      collisionSystem,
+      materials,
+      -23.5,
+      0.0,
       20,
-      12,
-      0.3,
-      3.2,
+      4.5,
+      0.25,
+      5.0,
+      2,
+      'X-',
+      woodMat,
+      'Beach_Stairs_North'
+    )
+
+    DistrictHelper.addStaticBox(
+      this.group,
+      collisionSystem,
+      materials,
+      -36.5,
+      0.075,
+      20,
+      15.0,
+      0.15,
+      4.5,
       woodMat,
       'Beach_Boardwalk_North'
     )
@@ -141,9 +206,9 @@ export class BeachDistrict {
     roof.castShadow = true
     shackGroup.add(roof)
 
-    // Counter & Bar Stools
+    // Counter & Bar Stools (3.2m width leaving wide 2.1m walkways on both sides)
     const counter = new THREE.Mesh(materials.boxGeometry, woodMat)
-    counter.scale.set(4.0, 1.1, 1.2)
+    counter.scale.set(3.2, 1.1, 1.2)
     counter.position.set(0, 0.75, 1.8)
     counter.castShadow = true
     shackGroup.add(counter)
@@ -157,9 +222,67 @@ export class BeachDistrict {
       shackGroup.add(lounger)
     }
 
+    // Gentle access step on the front of the wooden deck (allowing easy step-up from sand)
+    const accessStep = new THREE.Mesh(materials.boxGeometry, woodMat)
+    accessStep.scale.set(4.0, 0.2, 1.0)
+    accessStep.position.set(0, 0.1, 4.0)
+    accessStep.receiveShadow = true
+    accessStep.castShadow = true
+    shackGroup.add(accessStep)
+
     this.group.add(shackGroup)
 
-    DistrictHelper.registerBoxCollider(collisionSystem, x, 2.2, z, 7.8, 4.4, 7.8, name)
+    // Register Walkable Platform Collider for the Timber Deck (deck surface at Y = 0.4m)
+    DistrictHelper.registerBoxCollider(
+      collisionSystem,
+      x,
+      0.2,
+      z,
+      7.5,
+      0.4,
+      7.5,
+      `${name}_Walkable_Deck`
+    )
+
+    // Register Deck Access Step Collider
+    DistrictHelper.registerBoxCollider(
+      collisionSystem,
+      x,
+      0.1,
+      z + 4.0,
+      4.0,
+      0.2,
+      1.0,
+      `${name}_Deck_Step`
+    )
+
+    // Solid Collider for Bar Counter
+    DistrictHelper.registerBoxCollider(
+      collisionSystem,
+      x,
+      0.75,
+      z + 1.8,
+      3.2,
+      1.1,
+      1.2,
+      `${name}_Counter`
+    )
+
+    // Thin post colliders for 4 corner timber posts
+    for (const px of [-3.2, 3.2]) {
+      for (const pz of [-3.2, 3.2]) {
+        DistrictHelper.registerBoxCollider(
+          collisionSystem,
+          x + px,
+          1.8,
+          z + pz,
+          0.3,
+          3.2,
+          0.3,
+          `${name}_Post_${px}_${pz}`
+        )
+      }
+    }
   }
 
   public updateWater(dt: number): void {

@@ -49,7 +49,8 @@ export class ResidentialDistrict {
       4.6,
       '#e07a5f',
       true,
-      'Villa_Gulmohar'
+      'Villa_Gulmohar',
+      'S'
     )
 
     // House 2: "Neelam Cottage" (Seafoam Pastel)
@@ -64,7 +65,8 @@ export class ResidentialDistrict {
       4.2,
       '#81b29a',
       true,
-      'Cottage_Neelam'
+      'Cottage_Neelam',
+      'S'
     )
 
     // House 3: "Sandalwood Villa" (Warm Ochre)
@@ -79,7 +81,8 @@ export class ResidentialDistrict {
       5.2,
       '#f2cc8f',
       true,
-      'Villa_Sandalwood'
+      'Villa_Sandalwood',
+      'S'
     )
 
     // 3. South Row Coastal Residences (Facing North onto Avenue)
@@ -95,7 +98,8 @@ export class ResidentialDistrict {
       6.0,
       '#edf2f4',
       true,
-      'Residence_Ocean_Breeze'
+      'Residence_Ocean_Breeze',
+      'N'
     )
 
     // House 5: "Coral Cove Cottage"
@@ -110,7 +114,8 @@ export class ResidentialDistrict {
       4.4,
       '#ffcad4',
       true,
-      'Cottage_Coral_Cove'
+      'Cottage_Coral_Cove',
+      'N'
     )
 
     // House 6: "Palm Haven Villa"
@@ -125,11 +130,12 @@ export class ResidentialDistrict {
       5.0,
       '#b5e2fa',
       true,
-      'Villa_Palm_Haven'
+      'Villa_Palm_Haven',
+      'N'
     )
 
-    // 4. Low Compound Boundary Walls & Entry Gate Pillars
-    // Compound wall along North row gardens (Z: -41)
+    // 4. Low Compound Boundary Walls with Open Entry Gateways & Pillars
+    // Compound walls along North row gardens (Z: -41) and South row gardens (Z: -60)
     const compoundWalls: [number, number, number, number][] = [
       [25, -41, 15, 1.4],
       [45, -41, 14, 1.4],
@@ -139,21 +145,83 @@ export class ResidentialDistrict {
       [65, -60, 16, 1.4],
     ]
 
+    const pathMat = materials.getPromenadeTileMaterial()
+
     for (let i = 0; i < compoundWalls.length; i++) {
-      const [wx, wz, length, h] = compoundWalls[i]
+      const [wx, wz, totalLength, h] = compoundWalls[i]
+      const gateWidth = 3.6
+      const wingLength = (totalLength - gateWidth) / 2
+
+      // Left wall wing
+      const leftCenterX = wx - gateWidth / 2 - wingLength / 2
       DistrictHelper.addStaticBox(
         this.group,
         collisionSystem,
         materials,
-        wx,
+        leftCenterX,
         h / 2,
         wz,
-        length,
+        wingLength,
         h,
         0.5,
         wallMat,
-        `Compound_Wall_${i}`
+        `Compound_Wall_${i}_Left`
       )
+
+      // Right wall wing
+      const rightCenterX = wx + gateWidth / 2 + wingLength / 2
+      DistrictHelper.addStaticBox(
+        this.group,
+        collisionSystem,
+        materials,
+        rightCenterX,
+        h / 2,
+        wz,
+        wingLength,
+        h,
+        0.5,
+        wallMat,
+        `Compound_Wall_${i}_Right`
+      )
+
+      // Left gate post pillar
+      DistrictHelper.addStaticBox(
+        this.group,
+        collisionSystem,
+        materials,
+        wx - gateWidth / 2,
+        (h + 0.3) / 2,
+        wz,
+        0.6,
+        h + 0.3,
+        0.6,
+        wallMat,
+        `Compound_Pillar_${i}_Left`
+      )
+
+      // Right gate post pillar
+      DistrictHelper.addStaticBox(
+        this.group,
+        collisionSystem,
+        materials,
+        wx + gateWidth / 2,
+        (h + 0.3) / 2,
+        wz,
+        0.6,
+        h + 0.3,
+        0.6,
+        wallMat,
+        `Compound_Pillar_${i}_Right`
+      )
+
+      // Paved walkway from sidewalk through gateway toward villa veranda
+      const pathLength = 6.0
+      const pathZ = wz > -50 ? wz + pathLength / 2 : wz - pathLength / 2
+      const pathMesh = new THREE.Mesh(materials.boxGeometry, pathMat)
+      pathMesh.scale.set(2.4, 0.04, pathLength)
+      pathMesh.position.set(wx, 0.02, pathZ)
+      pathMesh.receiveShadow = true
+      this.group.add(pathMesh)
     }
 
     // 5. Garden Coconut Palms in Residential Courtyards

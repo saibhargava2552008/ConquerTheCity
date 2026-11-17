@@ -32,12 +32,51 @@ export class TownCentre {
     const woodMat = materials.getTimberWoodMaterial()
     const metalMat = materials.getColorMaterial(0x2b2d42, 0.4, 0.6)
 
-    // 1. Central Plaza Platform (X: 0, Z: 0, 28m x 28m)
+    // 1. Central Plaza Platform (X: 0, Z: 0, 30m x 30m, walkable platform at Y = 0.35m)
     const plaza = new THREE.Mesh(materials.boxGeometry, plazaTileMat)
     plaza.scale.set(30, 0.35, 30)
     plaza.position.set(0, 0.175, 0)
     plaza.receiveShadow = true
     this.group.add(plaza)
+
+    // Register Plaza Walkable Platform Collider
+    DistrictHelper.registerBoxCollider(
+      collisionSystem,
+      0,
+      0.175,
+      0,
+      30,
+      0.35,
+      30,
+      'Central_Plaza_Platform'
+    )
+
+    // Beveled curb transition ramps along the 4 edges of the plaza for smooth walking transitions
+    const curbEdges: [number, number, number, number][] = [
+      [0, 15.6, 26, 1.2],   // North edge
+      [0, -15.6, 26, 1.2],  // South edge
+      [15.6, 0, 1.2, 26],   // East edge
+      [-15.6, 0, 1.2, 26],  // West edge
+    ]
+    for (let c = 0; c < curbEdges.length; c++) {
+      const [cx, cz, cw, cd] = curbEdges[c]
+      const curbMesh = new THREE.Mesh(materials.boxGeometry, plazaTileMat)
+      curbMesh.scale.set(cw, 0.175, cd)
+      curbMesh.position.set(cx, 0.0875, cz)
+      curbMesh.receiveShadow = true
+      this.group.add(curbMesh)
+
+      DistrictHelper.registerBoxCollider(
+        collisionSystem,
+        cx,
+        0.0875,
+        cz,
+        cw,
+        0.175,
+        cd,
+        `Plaza_Curb_Ramp_${c}`
+      )
+    }
 
     // 2. The Seaview Lighthouse Landmark (Center at X: 0, Z: -5)
     // Lighthouse Octagonal Stone Foundation Base (8m x 8m, height: 4m)
@@ -96,24 +135,75 @@ export class TownCentre {
 
     this.group.add(this.beaconPivot)
 
-    // Register Lighthouse Solid Box Collider
+    // Lighthouse Entrance Portal Archway (South-facing portal frame at Z: -2.3)
+    const portalArchMat = materials.getColorMaterial(0x5c677d, 0.7, 0.2)
+    const portalFrame = new THREE.Mesh(materials.boxGeometry, portalArchMat)
+    portalFrame.scale.set(3.2, 3.4, 0.8)
+    portalFrame.position.set(0, 1.7, -2.0)
+    portalFrame.castShadow = true
+    this.group.add(portalFrame)
+
+    // Walkable entrance arch opening cutout (inner archway)
+    const portalOpening = new THREE.Mesh(materials.boxGeometry, stoneMat)
+    portalOpening.scale.set(2.0, 2.6, 0.9)
+    portalOpening.position.set(0, 1.3, -2.0)
+    this.group.add(portalOpening)
+
+    // Lighthouse Foundation & Tower Colliders (leaving the South entrance archway walkable)
+    // Main Tower & Rear Base Collider (Z: -8.0 to -3.2)
     DistrictHelper.registerBoxCollider(
       collisionSystem,
       0,
       (baseH + towerH + 6) / 2,
-      -5,
+      -5.6,
       6.4,
       baseH + towerH + 6,
-      6.4,
-      'Seaview_Lighthouse'
+      4.8,
+      'Seaview_Lighthouse_Main'
     )
 
-    // 3. Stately Royal Palms in the Plaza Corners
+    // West Base Flank Wall
+    DistrictHelper.registerBoxCollider(
+      collisionSystem,
+      -2.2,
+      baseH / 2,
+      -2.4,
+      2.0,
+      baseH,
+      1.6,
+      'Seaview_Lighthouse_Flank_W'
+    )
+
+    // East Base Flank Wall
+    DistrictHelper.registerBoxCollider(
+      collisionSystem,
+      2.2,
+      baseH / 2,
+      -2.4,
+      2.0,
+      baseH,
+      1.6,
+      'Seaview_Lighthouse_Flank_E'
+    )
+
+    // Archway Header Collider (above Y = 2.6m)
+    DistrictHelper.registerBoxCollider(
+      collisionSystem,
+      0,
+      3.3,
+      -2.4,
+      2.4,
+      1.4,
+      1.6,
+      'Seaview_Lighthouse_Arch_Header'
+    )
+
+    // 3. Stately Royal Palms in the Plaza (positioned clear of all boulevard and road lanes)
     const plazaPalms = [
       [10, 10],
-      [-10, 10],
+      [-3, 10],
       [10, -10],
-      [-10, -10],
+      [-3, -10],
     ]
 
     for (let i = 0; i < plazaPalms.length; i++) {
@@ -131,12 +221,12 @@ export class TownCentre {
       )
     }
 
-    // 4. Teak Wood Plaza Benches
+    // 4. Teak Wood Plaza Benches positioned in the calm lighthouse garden alcoves
     const benches = [
-      [6, 0.3, 6, 0],
-      [-6, 0.3, 6, 0],
-      [6, 0.3, -6, Math.PI],
-      [-6, 0.3, -6, Math.PI],
+      [4, 0.3, -3, -Math.PI / 2],
+      [-4, 0.3, -3, Math.PI / 2],
+      [4, 0.3, -7, -Math.PI / 2],
+      [-4, 0.3, -7, Math.PI / 2],
     ]
 
     for (let i = 0; i < benches.length; i++) {
@@ -157,8 +247,14 @@ export class TownCentre {
       bench.rotation.y = rot
     }
 
-    // 5. Colonial Streetlamps at Plaza Perimeters
-    for (const [lx, lz] of [[12, 0], [-12, 0], [0, 12], [0, -14]]) {
+    // 5. Colonial Streetlamps at Plaza Corner Perimeters (keeping all roads and walkways 100% open)
+    const lampCorners = [
+      [11, 11],
+      [-11, 11],
+      [11, -11],
+      [-11, -11],
+    ]
+    for (const [lx, lz] of lampCorners) {
       DistrictHelper.addStreetLamp(
         this.group,
         collisionSystem,

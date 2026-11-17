@@ -20,8 +20,8 @@ export class MarketDistrict {
     street.receiveShadow = true
     this.group.add(street)
 
-    // 2. West Side Market Shopfronts & Commercial Buildings (X: 25)
-    // Shop 1: "Krishna General Stores" (width 12, height 7.5, depth 14)
+    // 2. West Side Market Shopfronts & Commercial Buildings (Facing East onto Bazaar Street)
+    // Shop 1: "Krishna General Stores" (width 12, height 5.2, depth 14)
     DistrictHelper.addCoastalHouse(
       this.group,
       collisionSystem,
@@ -33,7 +33,8 @@ export class MarketDistrict {
       5.2,
       '#faedcd',
       true,
-      'Shop_Krishna_General'
+      'Shop_Krishna_General',
+      'E'
     )
 
     // Shop 2: "Malabar Spice Traders"
@@ -48,7 +49,8 @@ export class MarketDistrict {
       5.5,
       '#fcd5ce',
       true,
-      'Shop_Malabar_Spices'
+      'Shop_Malabar_Spices',
+      'E'
     )
 
     // Shop 3: "Coastline Bakery & Chai"
@@ -63,10 +65,11 @@ export class MarketDistrict {
       5.0,
       '#e8e8e4',
       true,
-      'Shop_Coastline_Chai'
+      'Shop_Coastline_Chai',
+      'E'
     )
 
-    // 3. East Side Market Buildings (X: 54)
+    // 3. East Side Market Buildings (Facing West onto Bazaar Street)
     // Building 1: Two-storey coastal commercial arcade
     DistrictHelper.addCoastalHouse(
       this.group,
@@ -79,7 +82,8 @@ export class MarketDistrict {
       6.0,
       '#d8e2dc',
       true,
-      'Bazaar_Arcade_South'
+      'Bazaar_Arcade_South',
+      'W'
     )
 
     // Building 2: Textiles & Handicrafts Emporium
@@ -94,7 +98,8 @@ export class MarketDistrict {
       6.2,
       '#ffe5d9',
       true,
-      'Bazaar_Textile_Emporium'
+      'Bazaar_Textile_Emporium',
+      'W'
     )
 
     // Building 3: Coastal Cafe & Sea Crafts
@@ -109,7 +114,8 @@ export class MarketDistrict {
       5.4,
       '#f0efeb',
       true,
-      'Bazaar_Sea_Crafts'
+      'Bazaar_Sea_Crafts',
+      'W'
     )
 
     // 4. Vibrant Bazaar Street Stalls running along the pedestrian street
