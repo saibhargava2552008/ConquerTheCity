@@ -1,0 +1,467 @@
+import * as THREE from 'three'
+import type { MaterialFactory } from '../MaterialFactory'
+import type { CollisionSystem } from '../../physics/CollisionSystem'
+
+/**
+ * Reusable helper utilities for procedural Indian coastal architecture and props
+ */
+export class DistrictHelper {
+  public static registerBoxCollider(
+    collisionSystem: CollisionSystem,
+    cx: number,
+    cy: number,
+    cz: number,
+    sx: number,
+    sy: number,
+    sz: number,
+    name: string
+  ): void {
+    const box = new THREE.Box3()
+    box.min.set(cx - sx / 2, cy - sy / 2, cz - sz / 2)
+    box.max.set(cx + sx / 2, cy + sy / 2, cz + sz / 2)
+
+    collisionSystem.addCollider({
+      id: name,
+      name,
+      box,
+      isStatic: true,
+    })
+  }
+
+  public static addStaticBox(
+    parent: THREE.Group,
+    collisionSystem: CollisionSystem,
+    materials: MaterialFactory,
+    x: number,
+    y: number,
+    z: number,
+    w: number,
+    h: number,
+    d: number,
+    mat: THREE.Material,
+    name: string,
+    hasCollider = true
+  ): THREE.Mesh {
+    const mesh = new THREE.Mesh(materials.boxGeometry, mat)
+    mesh.scale.set(w, h, d)
+    mesh.position.set(x, y, z)
+    mesh.castShadow = true
+    mesh.receiveShadow = true
+    parent.add(mesh)
+
+    if (hasCollider) {
+      this.registerBoxCollider(collisionSystem, x, y, z, w, h, d, name)
+    }
+
+    return mesh
+  }
+
+  /**
+   * Generates an authentic tropical coconut palm tree with curved trunk and radiating star canopy
+   */
+  public static addCoconutPalm(
+    parent: THREE.Group,
+    collisionSystem: CollisionSystem,
+    materials: MaterialFactory,
+    x: number,
+    z: number,
+    height = 7.5,
+    leanAngle = 0.15,
+    leanDir = Math.PI / 4,
+    name = 'Coconut_Palm'
+  ): THREE.Group {
+    const palmGroup = new THREE.Group()
+    palmGroup.position.set(x, 0, z)
+
+    const trunkMat = materials.getPalmTrunkMaterial()
+    const leafMat = materials.getPalmLeafMaterial()
+    const coconutMat = materials.getColorMaterial(0x5c4033, 0.9, 0.0)
+
+    // Segmented curved trunk (3 segments)
+    const segH = height / 3
+    let curX = 0
+    let curZ = 0
+    let curY = 0
+
+    const dx = Math.sin(leanDir) * Math.sin(leanAngle) * segH
+    const dz = Math.cos(leanDir) * Math.sin(leanAngle) * segH
+
+    for (let s = 0; s < 3; s++) {
+      const seg = new THREE.Mesh(materials.cylinderGeometry, trunkMat)
+      const rRadius = 0.28 - s * 0.04
+      seg.scale.set(rRadius, segH, rRadius)
+      seg.position.set(curX + dx / 2, curY + segH / 2, curZ + dz / 2)
+      seg.rotation.z = -Math.sin(leanDir) * leanAngle * (0.8 + s * 0.2)
+      seg.rotation.x = Math.cos(leanDir) * leanAngle * (0.8 + s * 0.2)
+      seg.castShadow = true
+      palmGroup.add(seg)
+
+      curX += dx
+      curZ += dz
+      curY += Math.cos(leanAngle) * segH
+    }
+
+    // Top crown fronds
+    const crown = new THREE.Group()
+    crown.position.set(curX, curY, curZ)
+
+    const numFronds = 8
+    for (let i = 0; i < numFronds; i++) {
+      const angle = (i / numFronds) * Math.PI * 2
+      const frond = new THREE.Mesh(materials.boxGeometry, leafMat)
+      // Long, flat, tapered leafy frond
+      frond.scale.set(0.65, 0.04, 3.4)
+      frond.position.set(Math.sin(angle) * 1.5, -0.4, Math.cos(angle) * 1.5)
+      frond.rotation.y = angle
+      frond.rotation.x = 0.35 + (i % 2 === 0 ? 0.1 : -0.05)
+      frond.castShadow = true
+      crown.add(frond)
+    }
+
+    // Coconut cluster
+    for (let c = 0; c < 3; c++) {
+      const nut = new THREE.Mesh(materials.sphereGeometry, coconutMat)
+      nut.scale.set(0.2, 0.24, 0.2)
+      nut.position.set(Math.cos(c * 2) * 0.25, -0.15, Math.sin(c * 2) * 0.25)
+      crown.add(nut)
+    }
+
+    palmGroup.add(crown)
+    parent.add(palmGroup)
+
+    // Base trunk collider
+    this.registerBoxCollider(collisionSystem, x, height / 2, z, 0.9, height, 0.9, name)
+
+    return palmGroup
+  }
+
+  /**
+   * Generates an authentic Indian coastal house with Mangalore tiled hip roof,
+   * stucco facade, front veranda with timber pillars, and compound wall.
+   */
+  public static addCoastalHouse(
+    parent: THREE.Group,
+    collisionSystem: CollisionSystem,
+    materials: MaterialFactory,
+    x: number,
+    z: number,
+    width = 12,
+    depth = 10,
+    wallHeight = 4.2,
+    wallColor = '#fdf0d5',
+    hasVeranda = true,
+    name = 'Coastal_House'
+  ): void {
+    const houseGroup = new THREE.Group()
+    houseGroup.position.set(x, 0, z)
+
+    const stuccoMat = materials.getStuccoMaterial(wallColor, '#802604')
+    const roofMat = materials.getTerracottaRoofMaterial()
+    const timberMat = materials.getTimberWoodMaterial()
+    const darkWoodMat = materials.getColorMaterial(0x3e2723, 0.8, 0.1)
+
+    // Main House Body
+    const body = new THREE.Mesh(materials.boxGeometry, stuccoMat)
+    body.scale.set(width, wallHeight, depth)
+    body.position.set(0, wallHeight / 2, 0)
+    body.castShadow = true
+    body.receiveShadow = true
+    houseGroup.add(body)
+
+    // Pitched Mangalore Terracotta Roof
+    const roofH = 2.4
+    const roofMesh = new THREE.Mesh(materials.coneGeometry, roofMat)
+    roofMesh.scale.set(width + 1.6, roofH, depth + 1.6)
+    roofMesh.position.set(0, wallHeight + roofH / 2, 0)
+    roofMesh.rotation.y = Math.PI / 4
+    roofMesh.castShadow = true
+    houseGroup.add(roofMesh)
+
+    // Front Veranda / Porch
+    if (hasVeranda) {
+      const verandaDepth = 2.8
+      const verandaZ = depth / 2 + verandaDepth / 2
+      const verandaRoofH = 0.3
+
+      // Veranda plinth platform
+      const plinth = new THREE.Mesh(materials.boxGeometry, materials.getPromenadeTileMaterial())
+      plinth.scale.set(width, 0.35, verandaDepth)
+      plinth.position.set(0, 0.175, verandaZ)
+      plinth.receiveShadow = true
+      houseGroup.add(plinth)
+
+      // Veranda sloped roof
+      const verandaRoof = new THREE.Mesh(materials.boxGeometry, roofMat)
+      verandaRoof.scale.set(width + 0.4, verandaRoofH, verandaDepth + 0.3)
+      verandaRoof.position.set(0, wallHeight * 0.78, verandaZ)
+      verandaRoof.rotation.x = 0.15
+      verandaRoof.castShadow = true
+      houseGroup.add(verandaRoof)
+
+      // Veranda timber pillars (4 pillars along front)
+      const numPillars = 4
+      const pSpacing = (width - 1.2) / (numPillars - 1)
+      for (let p = 0; p < numPillars; p++) {
+        const px = -(width - 1.2) / 2 + p * pSpacing
+        const pillar = new THREE.Mesh(materials.cylinderGeometry, timberMat)
+        pillar.scale.set(0.14, wallHeight * 0.75, 0.14)
+        pillar.position.set(px, (wallHeight * 0.75) / 2 + 0.3, depth / 2 + verandaDepth - 0.2)
+        pillar.castShadow = true
+        houseGroup.add(pillar)
+      }
+
+      // Wooden front door
+      const door = new THREE.Mesh(materials.boxGeometry, darkWoodMat)
+      door.scale.set(1.4, 2.4, 0.1)
+      door.position.set(0, 1.2, depth / 2 + 0.05)
+      houseGroup.add(door)
+    }
+
+    // Windows with painted wooden shutters
+    const winMat = materials.getColorMaterial(0x1a2530, 0.3, 0.6)
+    const shutterMat = materials.getColorMaterial(0x1e6091, 0.8, 0.1)
+
+    // Left and right windows on front
+    for (const wx of [-width / 3, width / 3]) {
+      const win = new THREE.Mesh(materials.boxGeometry, winMat)
+      win.scale.set(1.4, 1.5, 0.1)
+      win.position.set(wx, 2.2, depth / 2 + 0.05)
+      houseGroup.add(win)
+
+      // Left shutter
+      const shutL = new THREE.Mesh(materials.boxGeometry, shutterMat)
+      shutL.scale.set(0.4, 1.5, 0.08)
+      shutL.position.set(wx - 0.9, 2.2, depth / 2 + 0.08)
+      houseGroup.add(shutL)
+
+      // Right shutter
+      const shutR = new THREE.Mesh(materials.boxGeometry, shutterMat)
+      shutR.scale.set(0.4, 1.5, 0.08)
+      shutR.position.set(wx + 0.9, 2.2, depth / 2 + 0.08)
+      houseGroup.add(shutR)
+    }
+
+    parent.add(houseGroup)
+
+    // Register house box collider
+    const totalDepth = hasVeranda ? depth + 2.8 : depth
+    const centerOffsetZ = hasVeranda ? z + 1.4 : z
+    this.registerBoxCollider(
+      collisionSystem,
+      x,
+      (wallHeight + roofH) / 2,
+      centerOffsetZ,
+      width + 0.8,
+      wallHeight + roofH,
+      totalDepth + 0.8,
+      name
+    )
+  }
+
+  /**
+   * Generates a traditional Indian wooden coastal fishing boat (Dhoni / Vallam)
+   */
+  public static addFishingBoat(
+    parent: THREE.Group,
+    collisionSystem: CollisionSystem,
+    materials: MaterialFactory,
+    x: number,
+    y: number,
+    z: number,
+    rotY = 0,
+    hullColor = '#d90429',
+    stripeColor = '#ffbe0b',
+    name = 'Fishing_Boat'
+  ): THREE.Group {
+    const boatGroup = new THREE.Group()
+    boatGroup.position.set(x, y, z)
+    boatGroup.rotation.y = rotY
+
+    const hullMat = materials.getBoatHullMaterial(hullColor, stripeColor)
+    const woodMat = materials.getTimberWoodMaterial()
+    const mastMat = materials.getColorMaterial(0x4a3b32, 0.8, 0.1)
+
+    // Main Curved Hull
+    const length = 9.0
+    const width = 2.6
+    const height = 1.4
+
+    const hull = new THREE.Mesh(materials.boxGeometry, hullMat)
+    hull.scale.set(width, height, length)
+    hull.position.set(0, height / 2, 0)
+    hull.castShadow = true
+    boatGroup.add(hull)
+
+    // Pointed Bow
+    const bow = new THREE.Mesh(materials.coneGeometry, hullMat)
+    bow.scale.set(width * 0.85, 2.2, width * 0.85)
+    bow.position.set(0, height / 2 + 0.1, length / 2 + 1.0)
+    bow.rotation.x = Math.PI / 2
+    bow.castShadow = true
+    boatGroup.add(bow)
+
+    // Pointed Stern
+    const stern = new THREE.Mesh(materials.coneGeometry, hullMat)
+    stern.scale.set(width * 0.75, 1.8, width * 0.75)
+    stern.position.set(0, height / 2 + 0.1, -length / 2 - 0.8)
+    stern.rotation.x = -Math.PI / 2
+    stern.castShadow = true
+    boatGroup.add(stern)
+
+    // Wooden Deck Floor
+    const deck = new THREE.Mesh(materials.boxGeometry, woodMat)
+    deck.scale.set(width - 0.3, 0.15, length - 0.4)
+    deck.position.set(0, height - 0.1, 0)
+    deck.receiveShadow = true
+    boatGroup.add(deck)
+
+    // Small Wheelhouse / Shelter Cabin
+    const cabin = new THREE.Mesh(materials.boxGeometry, woodMat)
+    cabin.scale.set(1.6, 1.4, 2.2)
+    cabin.position.set(0, height + 0.7, -1.2)
+    cabin.castShadow = true
+    boatGroup.add(cabin)
+
+    // Mast
+    const mast = new THREE.Mesh(materials.cylinderGeometry, mastMat)
+    mast.scale.set(0.08, 4.2, 0.08)
+    mast.position.set(0, height + 2.1, 1.2)
+    mast.castShadow = true
+    boatGroup.add(mast)
+
+    // Folded Fishing Net Prop on deck
+    const netMat = materials.getColorMaterial(0x2d6a4f, 0.95, 0.0)
+    const net = new THREE.Mesh(materials.sphereGeometry, netMat)
+    net.scale.set(0.6, 0.35, 0.8)
+    net.position.set(0.4, height + 0.15, 2.5)
+    boatGroup.add(net)
+
+    parent.add(boatGroup)
+
+    // Boat Collider
+    this.registerBoxCollider(collisionSystem, x, y + height / 2, z, width + 0.4, height + 1.8, length + 2.5, name)
+
+    return boatGroup
+  }
+
+  /**
+   * Generates a bustling Indian bazaar street food or craft stall
+   */
+  public static addMarketStall(
+    parent: THREE.Group,
+    collisionSystem: CollisionSystem,
+    materials: MaterialFactory,
+    x: number,
+    z: number,
+    rotY = 0,
+    color1 = '#e76f51',
+    color2 = '#f4a261',
+    stallName = 'Market_Stall'
+  ): void {
+    const stallGroup = new THREE.Group()
+    stallGroup.position.set(x, 0, z)
+    stallGroup.rotation.y = rotY
+
+    const woodMat = materials.getTimberWoodMaterial()
+    const awningMat = materials.getBazaarAwningMaterial(color1, color2)
+
+    // Wooden sales counter
+    const counter = new THREE.Mesh(materials.boxGeometry, woodMat)
+    counter.scale.set(3.4, 1.05, 1.6)
+    counter.position.set(0, 0.525, 0)
+    counter.castShadow = true
+    counter.receiveShadow = true
+    stallGroup.add(counter)
+
+    // 4 Corner Timber Poles
+    const poleMat = materials.getColorMaterial(0x4a3828, 0.8, 0.1)
+    const pX = 1.6
+    const pZ = 0.8
+    for (const sx of [-pX, pX]) {
+      for (const sz of [-pZ, pZ]) {
+        const pole = new THREE.Mesh(materials.cylinderGeometry, poleMat)
+        pole.scale.set(0.06, 2.6, 0.06)
+        pole.position.set(sx, 1.3, sz)
+        pole.castShadow = true
+        stallGroup.add(pole)
+      }
+    }
+
+    // Slanted striped awning canopy
+    const canopy = new THREE.Mesh(materials.boxGeometry, awningMat)
+    canopy.scale.set(3.8, 0.05, 2.2)
+    canopy.position.set(0, 2.6, 0.1)
+    canopy.rotation.x = 0.12
+    canopy.castShadow = true
+    stallGroup.add(canopy)
+
+    // Crates & produce on counter
+    const crate1 = new THREE.Mesh(materials.boxGeometry, materials.getCrateMaterial())
+    crate1.scale.set(0.8, 0.4, 0.6)
+    crate1.position.set(-0.9, 1.25, 0)
+    stallGroup.add(crate1)
+
+    // Fruit/spice pyramid pile (e.g. vibrant saffron or turmeric)
+    const fruitMat = materials.getColorMaterial(0xf4a261, 0.6, 0.1)
+    const fruitPile = new THREE.Mesh(materials.coneGeometry, fruitMat)
+    fruitPile.scale.set(0.6, 0.5, 0.6)
+    fruitPile.position.set(0.6, 1.3, 0)
+    stallGroup.add(fruitPile)
+
+    parent.add(stallGroup)
+
+    this.registerBoxCollider(collisionSystem, x, 1.3, z, 3.6, 2.6, 2.0, stallName)
+  }
+
+  /**
+   * Coastal Street Lamp with warm nocturnal luminaire
+   */
+  public static addStreetLamp(
+    parent: THREE.Group,
+    collisionSystem: CollisionSystem,
+    materials: MaterialFactory,
+    x: number,
+    z: number,
+    height = 5.2,
+    name = 'Street_Lamp'
+  ): void {
+    const lampGroup = new THREE.Group()
+    lampGroup.position.set(x, 0, z)
+
+    const metalMat = materials.getColorMaterial(0x2f3640, 0.5, 0.6)
+    const glowMat = new THREE.MeshStandardMaterial({
+      color: 0xfffaed,
+      emissive: 0xffd166,
+      emissiveIntensity: 1.5,
+      roughness: 0.1,
+    })
+
+    // Fluted cast-iron column
+    const pole = new THREE.Mesh(materials.cylinderGeometry, metalMat)
+    pole.scale.set(0.12, height, 0.12)
+    pole.position.set(0, height / 2, 0)
+    pole.castShadow = true
+    lampGroup.add(pole)
+
+    // Ornamental base plinth
+    const base = new THREE.Mesh(materials.cylinderGeometry, metalMat)
+    base.scale.set(0.3, 0.6, 0.3)
+    base.position.set(0, 0.3, 0)
+    lampGroup.add(base)
+
+    // Curved head arm & lantern
+    const arm = new THREE.Mesh(materials.boxGeometry, metalMat)
+    arm.scale.set(0.8, 0.08, 0.08)
+    arm.position.set(0.35, height - 0.1, 0)
+    lampGroup.add(arm)
+
+    const lantern = new THREE.Mesh(materials.sphereGeometry, glowMat)
+    lantern.scale.set(0.24, 0.32, 0.24)
+    lantern.position.set(0.7, height - 0.28, 0)
+    lampGroup.add(lantern)
+
+    parent.add(lampGroup)
+
+    this.registerBoxCollider(collisionSystem, x, height / 2, z, 0.6, height, 0.6, name)
+  }
+}

@@ -1,7 +1,7 @@
 import * as THREE from 'three'
 import { CollisionSystem } from '../physics/CollisionSystem'
 import { MaterialFactory } from '../world/MaterialFactory'
-import { CityBuilder } from '../world/CityBuilder'
+import { SeaviewTown } from '../world/SeaviewTown'
 import { SkyAndLighting } from '../world/SkyAndLighting'
 import { Player, type CharacterId } from '../entities/Player'
 import { PlayerController } from '../entities/PlayerController'
@@ -28,7 +28,7 @@ export class Engine {
   public readonly characterId: CharacterId
   public readonly collisionSystem: CollisionSystem
   public readonly materials: MaterialFactory
-  public readonly cityBuilder: CityBuilder
+  public readonly seaviewTown: SeaviewTown
   public readonly skyAndLighting: SkyAndLighting
   public readonly player: Player
   public readonly playerController: PlayerController
@@ -73,22 +73,21 @@ export class Engine {
     // Cap pixel ratio to 1.5 to protect Intel UHD/Iris Xe laptops
     this.renderer.setPixelRatio(Math.min(window.devicePixelRatio, 1.5))
     this.renderer.shadowMap.enabled = true
-    this.renderer.shadowMap.type = THREE.PCFSoftShadowMap
+    this.renderer.shadowMap.type = THREE.PCFShadowMap
     this.renderer.toneMapping = THREE.ACESFilmicToneMapping
     this.renderer.toneMappingExposure = 1.05
 
     container.appendChild(this.renderer.domElement)
 
-    // 4. Core Systems
+    // 4. Core Systems & Seaview Town World Generation
     this.collisionSystem = new CollisionSystem()
     this.materials = new MaterialFactory()
     this.skyAndLighting = new SkyAndLighting(this.scene)
-    this.cityBuilder = new CityBuilder(this.scene, this.materials, this.collisionSystem)
-    this.cityBuilder.build()
+    this.seaviewTown = new SeaviewTown(this.scene, this.materials, this.collisionSystem)
 
     // 5. Player Entity & Controller
     this.player = new Player(this.characterId)
-    // Spawn player in the plaza facing North at ground level
+    // Spawn player in Seaview Town Centre Plaza facing North toward the Lighthouse
     this.player.setPosition(0, 0, 8)
     this.scene.add(this.player.mesh)
 
@@ -174,6 +173,9 @@ export class Engine {
       // Update camera follow to track player's new position
       this.thirdPersonCamera.update(playerStats.position, dt)
 
+      // Update environmental world animations (ocean waves, lighthouse beacon)
+      this.seaviewTown.update(dt)
+
       // Update directional light & shadow coverage
       this.skyAndLighting.update(playerStats.position)
 
@@ -223,7 +225,7 @@ export class Engine {
     }
 
     this.inputManager.dispose()
-    this.cityBuilder.dispose()
+    this.seaviewTown.dispose()
     this.skyAndLighting.dispose()
     this.player.dispose()
     this.materials.dispose()

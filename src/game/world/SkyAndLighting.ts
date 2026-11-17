@@ -1,5 +1,8 @@
 import * as THREE from 'three'
 
+/**
+ * Tropical coastal atmosphere and sunlight simulation for Seaview Town
+ */
 export class SkyAndLighting {
   public dirLight: THREE.DirectionalLight
   public hemiLight: THREE.HemisphereLight
@@ -8,27 +11,28 @@ export class SkyAndLighting {
   constructor(scene: THREE.Scene) {
     this.scene = scene
 
-    // Sky background and atmospheric fog
-    scene.background = new THREE.Color(0x8ec5eb)
-    scene.fog = new THREE.FogExp2(0x8ec5eb, 0.0085)
+    // Tropical coastal azure sky and warm maritime horizon haze
+    const skyColor = new THREE.Color(0x76b5c5)
+    scene.background = skyColor
+    scene.fog = new THREE.FogExp2(0x99c1b9, 0.0055)
 
-    // Hemisphere light (sky blue from above, warm earthy bounce from below)
-    this.hemiLight = new THREE.HemisphereLight(0xd9efff, 0x445544, 0.85)
-    this.hemiLight.position.set(0, 50, 0)
+    // Hemisphere light (tropical sky blue above, warm coastal sand bounce below)
+    this.hemiLight = new THREE.HemisphereLight(0xd8f3dc, 0xd4a373, 0.95)
+    this.hemiLight.position.set(0, 60, 0)
     scene.add(this.hemiLight)
 
-    // Directional Sunlight with optimized shadow mapping for Intel iGPU
-    this.dirLight = new THREE.DirectionalLight(0xfffaed, 1.8)
-    this.dirLight.position.set(40, 65, 30)
+    // Directional Sunlight (warm golden coastal afternoon sun)
+    this.dirLight = new THREE.DirectionalLight(0xfffaed, 2.0)
+    this.dirLight.position.set(50, 75, 40)
     this.dirLight.castShadow = true
 
-    // Tight shadow frustum around play space
+    // Optimized shadow mapping for Intel iGPU
     this.dirLight.shadow.mapSize.width = 1024
     this.dirLight.shadow.mapSize.height = 1024
     this.dirLight.shadow.camera.near = 0.5
-    this.dirLight.shadow.camera.far = 150
+    this.dirLight.shadow.camera.far = 180
 
-    const d = 45
+    const d = 55
     this.dirLight.shadow.camera.left = -d
     this.dirLight.shadow.camera.right = d
     this.dirLight.shadow.camera.top = d
@@ -44,8 +48,8 @@ export class SkyAndLighting {
    * Follows player horizontally so shadow map remains centered and high-res
    */
   public update(playerPos: THREE.Vector3): void {
-    this.dirLight.position.x = playerPos.x + 40
-    this.dirLight.position.z = playerPos.z + 30
+    this.dirLight.position.x = playerPos.x + 50
+    this.dirLight.position.z = playerPos.z + 40
     this.dirLight.target.position.set(playerPos.x, 0, playerPos.z)
     this.dirLight.target.updateMatrixWorld()
   }
