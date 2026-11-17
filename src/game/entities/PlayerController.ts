@@ -227,6 +227,10 @@ export class PlayerController {
       // Character faces in the direction of actual velocity
       const targetFacing = Math.atan2(this.velocity.x, this.velocity.z)
       this.facingAngle = dampAngle(this.facingAngle, targetFacing, 18, delta)
+    } else if (hasInput && this._moveDir.lengthSq() > 0.001) {
+      // Rotate towards intended movement direction immediately when initiating motion
+      const targetFacing = Math.atan2(this._moveDir.x, this._moveDir.z)
+      this.facingAngle = dampAngle(this.facingAngle, targetFacing, 14, delta)
     }
 
     // Calculate turning rate using shortest angular difference across -PI/PI boundary

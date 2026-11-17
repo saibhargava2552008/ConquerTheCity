@@ -258,21 +258,37 @@ export class Player extends Entity {
     }
 
     const prevAction = this.currentAction
+
+    // 1. Cleanly fade out previous action
+    if (prevAction && prevAction !== nextAction) {
+      prevAction.fadeOut(fadeDuration)
+    }
+
+    // 2. Prevent conflicting animations: fade out all other running actions
+    for (const [, action] of this.actions) {
+      if (action !== nextAction && action !== prevAction && action.isRunning()) {
+        action.fadeOut(fadeDuration * 0.5)
+      }
+    }
+
+    // 3. Reset and enable next action
     nextAction.reset()
     nextAction.enabled = true
+    nextAction.setEffectiveTimeScale(1.0)
+    nextAction.setEffectiveWeight(1.0)
 
+    // 4. Stride phase synchronization for seamless locomotion transitions (Walk <-> Run <-> Sprint)
     if (syncGait && prevAction) {
       const prevDur = prevAction.getClip().duration
       const nextDur = nextAction.getClip().duration
       if (prevDur > 0 && nextDur > 0) {
-        const progress = (prevAction.time % prevDur) / prevDur
+        const progress = (((prevAction.time % prevDur) + prevDur) % prevDur) / prevDur
         nextAction.time = progress * nextDur
       }
     }
 
-    if (prevAction) {
-      nextAction.crossFadeFrom(prevAction, fadeDuration, true)
-    }
+    // 5. Fade in smoothly and play
+    nextAction.fadeIn(fadeDuration)
     nextAction.play()
 
     this.currentAction = nextAction
@@ -311,41 +327,69 @@ export class Player extends Entity {
       }
 
       if (!isGrounded) {
-        // Airborne: Jump or Fall
-        this.switchAction('Aarav_Jump', 0.12)
-        if (this.currentAction) {
-          // If falling, hold apex/descent frame of jump animation
-          if (state === 'falling') {
+        // Airborne: Jump ascent or Fall descent
+        const isAscending =
+          state === 'jumping' ||
+          (this.currentActionName === 'Aarav_Jump' &&
+            this.currentAction &&
+            this.currentAction.time < 0.45)
+
+        if (isAscending) {
+          this.switchAction('Aarav_Jump', 0.08)
+          if (this.currentAction) {
+            // Synchronize takeoff and rise with jump physics impulse (~0.38s to apex)
+            this.currentAction.timeScale = 1.15
+          }
+        } else {
+          // Descending / falling (or stepped off a high ledge)
+          this.switchAction('Aarav_Jump', 0.12)
+          if (this.currentAction) {
             const clipDur = this.currentAction.getClip().duration
-            this.currentAction.time = Math.min(this.currentAction.time, clipDur * 0.65)
+            // If just entered falling directly (e.g. walked off an edge), skip takeoff crouch to airborne glide
+            if (this.currentAction.time < clipDur * 0.55) {
+              this.currentAction.time = clipDur * 0.55
+            }
+            // Loop/hold the mid-air glide pose (frame 14-20) while falling
+            if (this.currentAction.time > clipDur * 0.85) {
+              this.currentAction.time = clipDur * 0.58
+            }
+            this.currentAction.timeScale = 0.85
           }
         }
       } else if (this.landingTimer > 0) {
         // Landing impact recovery
         this.landingTimer -= dt
-        this.switchAction('Aarav_Landing', 0.1)
+        const landFade = speed > 2.0 ? 0.08 : 0.12
+        this.switchAction('Aarav_Landing', landFade)
+        if (this.currentAction) {
+          this.currentAction.timeScale = speed > 2.0 ? 1.6 : 1.2
+        }
       } else if (this.interactionTimer > 0) {
         // Hand interaction clip playing
         this.switchAction('Aarav_Hand_Interaction', 0.15)
-      } else if (speed > 0.4) {
+      } else if (speed > 0.25) {
         // Ground locomotion: Walk, Run, or Sprint
-        const isSprinting = state === 'sprinting' || speed > 7.5
+        const isSprinting = (state === 'sprinting' || speed > 7.2) && isGrounded
         const isRunning = !isSprinting && speed > 3.2
 
         if (isSprinting) {
           this.switchAction('Aarav_Sprint', 0.18, true)
           if (this.currentAction) {
-            this.currentAction.timeScale = clamp(speed / 9.5, 0.8, 1.45)
+            // Duration 0.533s: At 10.5 m/s, cadence matches ground displacement
+            this.currentAction.timeScale = clamp(speed / 9.8, 0.75, 1.35)
           }
         } else if (isRunning) {
-          this.switchAction('Aarav_Run', 0.2, true)
+          this.switchAction('Aarav_Run', 0.20, true)
           if (this.currentAction) {
-            this.currentAction.timeScale = clamp(speed / 5.5, 0.75, 1.35)
+            // Duration 0.800s: At 5.5 m/s, cadence matches ground displacement
+            this.currentAction.timeScale = clamp(speed / 5.2, 0.65, 1.35)
           }
         } else {
-          this.switchAction('Aarav_Walk', 0.2, true)
+          // Walk (acceleration, slow maneuver, stopping)
+          this.switchAction('Aarav_Walk', 0.20, true)
           if (this.currentAction) {
-            this.currentAction.timeScale = clamp(speed / 2.6, 0.7, 1.3)
+            // Duration 1.067s: At 2.2 m/s, cadence matches ground displacement
+            this.currentAction.timeScale = clamp(speed / 2.2, 0.45, 1.35)
           }
         }
       } else {
@@ -353,10 +397,10 @@ export class Player extends Entity {
         if (Math.abs(turnRate) > 1.8) {
           this.switchAction('Aarav_Turn_Left', 0.15)
           if (this.currentAction) {
-            this.currentAction.timeScale = clamp(Math.abs(turnRate) / 2.5, 0.7, 1.5)
+            this.currentAction.timeScale = clamp(Math.abs(turnRate) / 2.5, 0.8, 1.6)
           }
         } else {
-          this.switchAction('Aarav_Idle', 0.25)
+          this.switchAction('Aarav_Idle', 0.22)
           if (this.currentAction) {
             this.currentAction.timeScale = 1.0
           }

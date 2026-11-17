@@ -8,7 +8,7 @@
     "build": "tsc -b && vite build",
     "lint": "eslint .",
     "preview": "vite preview",
-    "test": "npx tsx src/game/physics/movement-tests.ts"
+    "test": "npx tsx src/game/physics/movement-tests.ts && npx tsx scripts/test_animation_transitions.ts"
   },
   "dependencies": {
     "react": "^19.3.1",
