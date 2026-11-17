@@ -48,6 +48,7 @@ export class Engine {
 
   // Resize handler
   private resizeObserver: ResizeObserver | null = null
+  private boundOnResize: (() => void) | null = null
 
   constructor(container: HTMLElement) {
     this.container = container
@@ -120,11 +121,15 @@ export class Engine {
       this.renderer.setSize(w, h)
     }
 
-    if (window.ResizeObserver) {
-      this.resizeObserver = new ResizeObserver(() => handleResize())
-      this.resizeObserver.observe(this.container)
-    } else {
-      window.addEventListener('resize', handleResize)
+    this.boundOnResize = handleResize
+
+    if (typeof window !== 'undefined') {
+      if (window.ResizeObserver) {
+        this.resizeObserver = new ResizeObserver(() => handleResize())
+        this.resizeObserver.observe(this.container)
+      } else {
+        window.addEventListener('resize', this.boundOnResize)
+      }
     }
   }
 
@@ -205,6 +210,11 @@ export class Engine {
     if (this.resizeObserver) {
       this.resizeObserver.disconnect()
       this.resizeObserver = null
+    }
+
+    if (this.boundOnResize && typeof window !== 'undefined') {
+      window.removeEventListener('resize', this.boundOnResize)
+      this.boundOnResize = null
     }
 
     this.inputManager.dispose()

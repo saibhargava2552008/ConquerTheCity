@@ -33,11 +33,18 @@ export function damp(current: number, target: number, lambda: number, dt: number
 }
 
 /**
+ * Wraps any angle into the [-Math.PI, Math.PI] range
+ */
+export function normalizeAngle(angle: number): number {
+  return ((angle + Math.PI) % (Math.PI * 2) + Math.PI * 2) % (Math.PI * 2) - Math.PI
+}
+
+/**
  * Interpolate angle via shortest path
  */
 export function lerpAngle(current: number, target: number, alpha: number): number {
   const diff = (target - current + Math.PI * 3) % (Math.PI * 2) - Math.PI
-  return current + diff * clamp(alpha, 0, 1)
+  return normalizeAngle(current + diff * clamp(alpha, 0, 1))
 }
 
 /**

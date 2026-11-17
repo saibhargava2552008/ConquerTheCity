@@ -59,6 +59,40 @@ export class CollisionSystem {
   }
 
   /**
+   * Checks whether a bounding box at (x, y, z) intersects any solid obstacles.
+   */
+  public isPositionBlocked(
+    x: number,
+    y: number,
+    z: number,
+    radius: number,
+    height: number,
+    ignoreColliderId?: string
+  ): boolean {
+    const halfWidth = radius
+    const stepHeight = 0.45
+    const footY = y
+    const headY = y + height
+
+    for (let i = 0; i < this.colliders.length; i++) {
+      const c = this.colliders[i]
+      if (ignoreColliderId && c.id === ignoreColliderId) continue
+      const box = c.box
+      if (box.max.y <= footY + stepHeight || box.min.y >= headY) continue
+
+      if (
+        x + halfWidth > box.min.x &&
+        x - halfWidth < box.max.x &&
+        z + halfWidth > box.min.z &&
+        z - halfWidth < box.max.z
+      ) {
+        return true
+      }
+    }
+    return false
+  }
+
+  /**
    * Resolves horizontal motion with clean axis-wise separation.
    * Ensures seamless wall sliding, eliminates jitter/freezing at corners,
    * preserves step-up curbs, and prevents penetration through solid obstacles.
@@ -143,7 +177,7 @@ export class CollisionSystem {
 
         // Check if player overlaps the collider along X
         const overlapsX =
-          position.x + halfWidth - skin > box.min.x && position.x - halfWidth + skin < box.max.x
+          position.x + halfWidth - skin > box.min.x && position.x - halfWidth + skin < box.max.z
         if (!overlapsX) continue
 
         if (velocity.z > 0) {
@@ -180,37 +214,60 @@ export class CollisionSystem {
     }
 
     // 3. De-penetration safety pass
-    // If player is slightly embedded inside an obstacle, push out along shortest axis
-    for (let i = 0; i < this.colliders.length; i++) {
-      const box = this.colliders[i].box
-      if (box.max.y <= footY + stepHeight || box.min.y >= headY) continue
+    // Evaluates candidates and guarantees player is never pushed into another solid collider
+    for (let pass = 0; pass < 2; pass++) {
+      for (let i = 0; i < this.colliders.length; i++) {
+        const c = this.colliders[i]
+        const box = c.box
+        if (box.max.y <= footY + stepHeight || box.min.y >= headY) continue
 
-      const pMinX = position.x - halfWidth
-      const pMaxX = position.x + halfWidth
-      const pMinZ = position.z - halfWidth
-      const pMaxZ = position.z + halfWidth
+        const pMinX = position.x - halfWidth
+        const pMaxX = position.x + halfWidth
+        const pMinZ = position.z - halfWidth
+        const pMaxZ = position.z + halfWidth
 
-      // Check full AABB intersection
-      if (pMaxX > box.min.x && pMinX < box.max.x && pMaxZ > box.min.z && pMinZ < box.max.z) {
-        const penLeft = pMaxX - box.min.x
-        const penRight = box.max.x - pMinX
-        const penTop = pMaxZ - box.min.z
-        const penBottom = box.max.z - pMinZ
+        // Check full AABB intersection
+        if (pMaxX > box.min.x && pMinX < box.max.x && pMaxZ > box.min.z && pMinZ < box.max.z) {
+          const penLeft = pMaxX - box.min.x
+          const penRight = box.max.x - pMinX
+          const penTop = pMaxZ - box.min.z
+          const penBottom = box.max.z - pMinZ
 
-        const minPen = Math.min(penLeft, penRight, penTop, penBottom)
+          const candidates = [
+            { x: box.min.x - halfWidth - skin, z: position.z, pen: penLeft, axis: 'x', dir: -1 },
+            { x: box.max.x + halfWidth + skin, z: position.z, pen: penRight, axis: 'x', dir: 1 },
+            { x: position.x, z: box.min.z - halfWidth - skin, pen: penTop, axis: 'z', dir: -1 },
+            { x: position.x, z: box.max.z + halfWidth + skin, pen: penBottom, axis: 'z', dir: 1 },
+          ].sort((a, b) => a.pen - b.pen)
 
-        if (minPen === penLeft) {
-          position.x = box.min.x - halfWidth - skin
-          velocity.x = Math.min(0, velocity.x)
-        } else if (minPen === penRight) {
-          position.x = box.max.x + halfWidth + skin
-          velocity.x = Math.max(0, velocity.x)
-        } else if (minPen === penTop) {
-          position.z = box.min.z - halfWidth - skin
-          velocity.z = Math.min(0, velocity.z)
-        } else {
-          position.z = box.max.z + halfWidth + skin
-          velocity.z = Math.max(0, velocity.z)
+          // Pick the shallowest direction that does NOT push player into another collider
+          let resolved = false
+          for (let k = 0; k < candidates.length; k++) {
+            const cand = candidates[k]
+            if (!this.isPositionBlocked(cand.x, footY, cand.z, halfWidth, height, c.id)) {
+              position.x = cand.x
+              position.z = cand.z
+              if (cand.axis === 'x') {
+                velocity.x = cand.dir < 0 ? Math.min(0, velocity.x) : Math.max(0, velocity.x)
+              } else {
+                velocity.z = cand.dir < 0 ? Math.min(0, velocity.z) : Math.max(0, velocity.z)
+              }
+              resolved = true
+              break
+            }
+          }
+
+          // Fallback if cornered: take smallest penetration direction
+          if (!resolved) {
+            const best = candidates[0]
+            position.x = best.x
+            position.z = best.z
+            if (best.axis === 'x') {
+              velocity.x = best.dir < 0 ? Math.min(0, velocity.x) : Math.max(0, velocity.x)
+            } else {
+              velocity.z = best.dir < 0 ? Math.min(0, velocity.z) : Math.max(0, velocity.z)
+            }
+          }
         }
       }
     }
