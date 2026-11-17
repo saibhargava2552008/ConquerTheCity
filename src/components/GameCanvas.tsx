@@ -59,7 +59,7 @@ export const GameCanvas: React.FC = () => {
 
   const handleResetPosition = useCallback(() => {
     if (engineRef.current) {
-      engineRef.current.playerController.teleport(0, 0.5, 8)
+      engineRef.current.playerController.teleport(0, 0, 8)
       engineRef.current.thirdPersonCamera.snapBehindPlayer(
         engineRef.current.player.getPosition(),
         Math.PI

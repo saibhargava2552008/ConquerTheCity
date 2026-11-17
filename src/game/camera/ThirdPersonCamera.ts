@@ -105,6 +105,34 @@ export class ThirdPersonCamera {
   }
 
   /**
+   * Returns the camera's horizontal forward vector (flattened onto XZ and normalized).
+   */
+  public getHorizontalForward(out = new THREE.Vector3()): THREE.Vector3 {
+    this.camera.getWorldDirection(out)
+    out.y = 0
+    if (out.lengthSq() > 0.00001) {
+      out.normalize()
+    } else {
+      out.set(0, 0, -1)
+    }
+    return out
+  }
+
+  /**
+   * Returns the camera's horizontal right vector derived consistently from the forward vector.
+   */
+  public getHorizontalRight(out = new THREE.Vector3()): THREE.Vector3 {
+    this.getHorizontalForward(out)
+    out.crossVectors(out, this.camera.up)
+    if (out.lengthSq() > 0.00001) {
+      out.normalize()
+    } else {
+      out.set(1, 0, 0)
+    }
+    return out
+  }
+
+  /**
    * Resets camera behind player immediately
    */
   public snapBehindPlayer(playerPos: THREE.Vector3, playerYaw: number): void {
@@ -123,6 +151,7 @@ export class ThirdPersonCamera {
       this.currentLookTarget.y + sinPitch * this.distance,
       this.currentLookTarget.z + cosYaw * cosPitch * this.distance
     )
+    this._desiredCameraPos.copy(this.currentCameraPos)
     this.camera.position.copy(this.currentCameraPos)
     this.camera.lookAt(this.currentLookTarget)
   }

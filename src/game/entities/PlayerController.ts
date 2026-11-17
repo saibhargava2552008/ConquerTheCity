@@ -2,7 +2,8 @@ import * as THREE from 'three'
 import { Player } from './Player'
 import { CollisionSystem } from '../physics/CollisionSystem'
 import type { InputState, MovementState, PlayerStats } from '../core/Types'
-import { damp, dampAngle, clamp } from '../physics/MathUtils'
+import type { ThirdPersonCamera } from '../camera/ThirdPersonCamera'
+import { damp, dampAngle, clamp, UP } from '../physics/MathUtils'
 
 export class PlayerController {
   private player: Player
@@ -45,6 +46,8 @@ export class PlayerController {
   // Reusable vector buffers
   private _moveDir = new THREE.Vector3()
   private _targetVel = new THREE.Vector3()
+  private _camForward = new THREE.Vector3()
+  private _camRight = new THREE.Vector3()
 
   constructor(player: Player, collisionSystem: CollisionSystem) {
     this.player = player
@@ -52,7 +55,11 @@ export class PlayerController {
     this.position = player.mesh.position
   }
 
-  public update(input: InputState, cameraYaw: number, dt: number): PlayerStats {
+  public update(
+    input: InputState,
+    cameraOrForward: THREE.Camera | ThirdPersonCamera | THREE.Vector3 | number,
+    dt: number
+  ): PlayerStats {
     // Clamp delta time to avoid physics tunneling on tab switches
     const delta = Math.min(dt, 0.05)
 
@@ -67,34 +74,60 @@ export class PlayerController {
 
     const targetMaxSpeed = wantsSprint ? this.sprintSpeed : this.walkSpeed
 
-    // 2. Compute Input Direction relative to Camera Yaw
+    // 2. Compute Camera Horizontal Forward and Right Vectors (flattened onto XZ and normalized)
+    if (cameraOrForward instanceof THREE.Camera) {
+      cameraOrForward.getWorldDirection(this._camForward)
+      this._camForward.y = 0
+      if (this._camForward.lengthSq() > 0.00001) {
+        this._camForward.normalize()
+      } else {
+        this._camForward.set(0, 0, -1)
+      }
+      this._camRight.crossVectors(this._camForward, cameraOrForward.up).normalize()
+    } else if (cameraOrForward instanceof THREE.Vector3) {
+      this._camForward.copy(cameraOrForward)
+      this._camForward.y = 0
+      if (this._camForward.lengthSq() > 0.00001) {
+        this._camForward.normalize()
+      } else {
+        this._camForward.set(0, 0, -1)
+      }
+      this._camRight.crossVectors(this._camForward, UP).normalize()
+    } else if (
+      typeof cameraOrForward === 'object' &&
+      cameraOrForward !== null &&
+      'getHorizontalForward' in cameraOrForward
+    ) {
+      ;(cameraOrForward as ThirdPersonCamera).getHorizontalForward(this._camForward)
+      ;(cameraOrForward as ThirdPersonCamera).getHorizontalRight(this._camRight)
+    } else if (typeof cameraOrForward === 'number') {
+      const yaw = cameraOrForward
+      this._camForward.set(-Math.sin(yaw), 0, -Math.cos(yaw)).normalize()
+      this._camRight.crossVectors(this._camForward, UP).normalize()
+    } else {
+      this._camForward.set(0, 0, -1)
+      this._camRight.set(1, 0, 0)
+    }
+
+    // Combine forward/backward (W/S) and right/left (D/A) inputs
+    let moveForward = 0
+    let moveRight = 0
+
+    if (input.forward) moveForward += 1
+    if (input.backward) moveForward -= 1
+    if (input.right) moveRight += 1
+    if (input.left) moveRight -= 1
+
+    const hasInput = moveForward !== 0 || moveRight !== 0
+
     this._moveDir.set(0, 0, 0)
 
-    let inputX = 0
-    let inputZ = 0
-
-    if (input.forward) inputZ -= 1
-    if (input.backward) inputZ += 1
-    if (input.left) inputX -= 1
-    if (input.right) inputX += 1
-
-    const hasInput = inputX !== 0 || inputZ !== 0
-
     if (hasInput) {
-      // Normalize input vector so diagonals don't move faster
-      const len = Math.hypot(inputX, inputZ)
-      inputX /= len
-      inputZ /= len
-
-      // Rotate direction vector by camera yaw:
-      // Camera Forward = (-sinYaw, 0, -cosYaw)
-      // Camera Right   = (cosYaw, 0, -sinYaw)
-      // With W moving along +Forward (-inputZ) and D moving along +Right (+inputX):
-      const sinYaw = Math.sin(cameraYaw)
-      const cosYaw = Math.cos(cameraYaw)
-
-      this._moveDir.x = inputX * cosYaw + inputZ * sinYaw
-      this._moveDir.z = -inputX * sinYaw + inputZ * cosYaw
+      this._moveDir.addScaledVector(this._camForward, moveForward)
+      this._moveDir.addScaledVector(this._camRight, moveRight)
+      if (this._moveDir.lengthSq() > 0.0001) {
+        this._moveDir.normalize()
+      }
     }
 
     // 3. Horizontal Acceleration & Deceleration with Reversal Braking

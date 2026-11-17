@@ -177,7 +177,7 @@ export class CollisionSystem {
 
         // Check if player overlaps the collider along X
         const overlapsX =
-          position.x + halfWidth - skin > box.min.x && position.x - halfWidth + skin < box.max.z
+          position.x + halfWidth - skin > box.min.x && position.x - halfWidth + skin < box.max.x
         if (!overlapsX) continue
 
         if (velocity.z > 0) {

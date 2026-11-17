@@ -1,4 +1,35 @@
 import * as THREE from 'three'
+
+// Mock minimal DOM for Node test runner
+if (typeof document === 'undefined') {
+  const mockCtx = new Proxy({}, {
+    get: (_target, prop) => {
+      if (typeof prop === 'string') return () => {}
+      return undefined
+    }
+  })
+  const mockCanvas = {
+    getContext: () => mockCtx,
+    width: 256,
+    height: 256,
+  }
+  class MockDocument extends EventTarget {
+    public pointerLockElement: HTMLElement | null = null
+    public hidden = false
+    public visibilityState = 'visible'
+    createElement(tag: string) {
+      if (tag === 'canvas') return mockCanvas
+      return {}
+    }
+    exitPointerLock() {
+      this.pointerLockElement = null
+    }
+  }
+  class MockWindow extends EventTarget {}
+  ;(globalThis as unknown as { document: unknown }).document = new MockDocument()
+  ;(globalThis as unknown as { window: unknown }).window = new MockWindow()
+}
+
 import { CollisionSystem } from './CollisionSystem'
 import { Player } from '../entities/Player'
 import { PlayerController } from '../entities/PlayerController'
@@ -28,81 +59,125 @@ function assert(condition: boolean, msg: string) {
 
 console.log('=== RUNNING CONQUER THE CITY TEST SUITE ===')
 
-// 1. WASD & Diagonal Movement & Normalization Tests
+// 1. Camera-Relative Movement, Reversed Camera, Strafing, Pitch Independence & Diagonal Normalization
 {
   const col = new CollisionSystem()
   const player = new Player()
   const ctrl = new PlayerController(player, col)
 
-  // Test at Camera Yaw = 0 (Camera looking down -Z)
-  // W should move along -Z
-  let stats = ctrl.update(createInput({ forward: true }), 0, 0.05)
-  assert(stats.velocity.z < -0.1, 'Yaw 0: W should move along negative Z')
-  assert(Math.abs(stats.velocity.x) < 0.001, 'Yaw 0: W should have near-zero X velocity')
+  // 1a. Camera positioned at (0, 5, 10) looking at (0, 1.5, 0) -> horizontal forward is -Z, right is +X
+  const cam1 = new THREE.PerspectiveCamera(60, 1, 0.1, 100)
+  cam1.position.set(0, 5, 10)
+  cam1.lookAt(0, 1.5, 0)
 
-  // S should move along +Z
+  // W moves forward in horizontal camera direction (-Z)
   ctrl.teleport(0, 0, 0)
-  stats = ctrl.update(createInput({ backward: true }), 0, 0.05)
-  assert(stats.velocity.z > 0.1, 'Yaw 0: S should move along positive Z')
+  let stats = ctrl.update(createInput({ forward: true }), cam1, 0.05)
+  assert(stats.velocity.z < -0.1, 'Camera looking -Z: W must move along negative Z')
+  assert(Math.abs(stats.velocity.x) < 0.001, 'Camera looking -Z: W must have zero X velocity')
+  assert(stats.velocity.y === 0, 'Camera pitch must not cause vertical velocity')
 
-  // D should move along +X
+  // S moves backward (+Z)
   ctrl.teleport(0, 0, 0)
-  stats = ctrl.update(createInput({ right: true }), 0, 0.05)
-  assert(stats.velocity.x > 0.1, 'Yaw 0: D should move along positive X')
+  stats = ctrl.update(createInput({ backward: true }), cam1, 0.05)
+  assert(stats.velocity.z > 0.1, 'Camera looking -Z: S must move along positive Z')
+  assert(stats.velocity.y === 0, 'S must have zero vertical velocity')
 
-  // A should move along -X
+  // D moves right (+X)
   ctrl.teleport(0, 0, 0)
-  stats = ctrl.update(createInput({ left: true }), 0, 0.05)
-  assert(stats.velocity.x < -0.1, 'Yaw 0: A should move along negative X')
+  stats = ctrl.update(createInput({ right: true }), cam1, 0.05)
+  assert(stats.velocity.x > 0.1, 'Camera looking -Z: D must move along positive X (right)')
 
-  // Diagonal Normalization: W + D should have same target speed as W alone
+  // A moves left (-X)
+  ctrl.teleport(0, 0, 0)
+  stats = ctrl.update(createInput({ left: true }), cam1, 0.05)
+  assert(stats.velocity.x < -0.1, 'Camera looking -Z: A must move along negative X (left)')
+
+  // 1b. Reversed Camera Direction: Camera at (0, 5, -10) looking at (0, 1.5, 0) -> horizontal forward is +Z
+  const camReversed = new THREE.PerspectiveCamera(60, 1, 0.1, 100)
+  camReversed.position.set(0, 5, -10)
+  camReversed.lookAt(0, 1.5, 0)
+
+  // W must move forward in the camera direction (+Z)
+  ctrl.teleport(0, 0, 0)
+  stats = ctrl.update(createInput({ forward: true }), camReversed, 0.05)
+  assert(stats.velocity.z > 0.1, 'Reversed Camera looking +Z: W must move along positive Z')
+  assert(Math.abs(stats.velocity.x) < 0.001, 'Reversed Camera: W must have zero X velocity')
+
+  // S must move backward (-Z)
+  ctrl.teleport(0, 0, 0)
+  stats = ctrl.update(createInput({ backward: true }), camReversed, 0.05)
+  assert(stats.velocity.z < -0.1, 'Reversed Camera looking +Z: S must move along negative Z')
+
+  // D must move right (-X when looking +Z)
+  ctrl.teleport(0, 0, 0)
+  stats = ctrl.update(createInput({ right: true }), camReversed, 0.05)
+  assert(stats.velocity.x < -0.1, 'Reversed Camera: D must move right (negative X)')
+
+  // A must move left (+X when looking +Z)
+  ctrl.teleport(0, 0, 0)
+  stats = ctrl.update(createInput({ left: true }), camReversed, 0.05)
+  assert(stats.velocity.x > 0.1, 'Reversed Camera: A must move left (positive X)')
+
+  // 1c. Camera Pitch Independence: Steep Pitch (Looking from high above at y = 25)
+  const camSteepPitch = new THREE.PerspectiveCamera(60, 1, 0.1, 100)
+  camSteepPitch.position.set(0, 25, 10)
+  camSteepPitch.lookAt(0, 1.5, 0)
+
+  ctrl.teleport(0, 0, 0)
+  stats = ctrl.update(createInput({ forward: true }), camSteepPitch, 0.05)
+  assert(stats.velocity.z < -0.1, 'Steep pitch: W must still move horizontally along -Z')
+  assert(stats.velocity.y === 0, 'Steep camera pitch must not cause any vertical velocity')
+
+  // 1d. Diagonal Normalization: W + D must have identical steady speed to W alone
   ctrl.teleport(0, 0, 0)
   for (let i = 0; i < 40; i++) {
-    stats = ctrl.update(createInput({ forward: true, right: true }), 0, 0.016)
+    stats = ctrl.update(createInput({ forward: true, right: true }), cam1, 0.016)
   }
   const diagonalSpeed = Math.hypot(stats.velocity.x, stats.velocity.z)
   assert(
     Math.abs(diagonalSpeed - ctrl.walkSpeed) < 0.2,
-    `Diagonal speed (${diagonalSpeed.toFixed(2)}) should match walk speed (${ctrl.walkSpeed})`
+    `Diagonal speed (${diagonalSpeed.toFixed(2)}) must be normalized to walk speed (${ctrl.walkSpeed})`
   )
-  console.log('✔ 1. WASD & Diagonal normalization passed')
+  assert(stats.velocity.y === 0, 'Diagonal movement must have zero vertical velocity')
+
+  console.log('✔ 1. Camera-relative movement, reversed camera, strafing, pitch independence & diagonal normalization passed')
 }
 
-// 2. Camera-Relative Movement at Arbitrary Yaws
+// 2. Camera-Relative Movement at Arbitrary Lateral Angles
 {
   const col = new CollisionSystem()
   const player = new Player()
   const ctrl = new PlayerController(player, col)
 
-  // Camera Yaw = PI / 2 (90 deg: camera on +X looking at origin, view is -X)
+  // Camera on +X axis looking at origin -> horizontal forward is -X, right is -Z
+  const camEast = new THREE.PerspectiveCamera(60, 1, 0.1, 100)
+  camEast.position.set(10, 3, 0)
+  camEast.lookAt(0, 1.5, 0)
+
   // W should move towards -X
   ctrl.teleport(0, 0, 0)
-  let stats = ctrl.update(createInput({ forward: true }), Math.PI / 2, 0.05)
-  assert(stats.velocity.x < -0.1, 'Yaw PI/2: W should move along negative X')
-  assert(Math.abs(stats.velocity.z) < 0.05, 'Yaw PI/2: W should have near-zero Z velocity')
+  let stats = ctrl.update(createInput({ forward: true }), camEast, 0.05)
+  assert(stats.velocity.x < -0.1, 'Camera looking -X: W should move along negative X')
+  assert(Math.abs(stats.velocity.z) < 0.05, 'Camera looking -X: W should have near-zero Z velocity')
+  assert(stats.velocity.y === 0, 'W must have zero vertical velocity')
 
   // S should move towards +X
   ctrl.teleport(0, 0, 0)
-  stats = ctrl.update(createInput({ backward: true }), Math.PI / 2, 0.05)
-  assert(stats.velocity.x > 0.1, 'Yaw PI/2: S should move along positive X')
+  stats = ctrl.update(createInput({ backward: true }), camEast, 0.05)
+  assert(stats.velocity.x > 0.1, 'Camera looking -X: S should move along positive X')
 
   // D should move towards -Z
   ctrl.teleport(0, 0, 0)
-  stats = ctrl.update(createInput({ right: true }), Math.PI / 2, 0.05)
-  assert(stats.velocity.z < -0.1, 'Yaw PI/2: D should move along negative Z')
+  stats = ctrl.update(createInput({ right: true }), camEast, 0.05)
+  assert(stats.velocity.z < -0.1, 'Camera looking -X: D should move along negative Z (right)')
 
   // A should move towards +Z
   ctrl.teleport(0, 0, 0)
-  stats = ctrl.update(createInput({ left: true }), Math.PI / 2, 0.05)
-  assert(stats.velocity.z > 0.1, 'Yaw PI/2: A should move along positive Z')
+  stats = ctrl.update(createInput({ left: true }), camEast, 0.05)
+  assert(stats.velocity.z > 0.1, 'Camera looking -X: A should move along positive Z (left)')
 
-  // Camera Yaw = PI (180 deg: camera looking down +Z)
-  // W should move towards +Z
-  ctrl.teleport(0, 0, 0)
-  stats = ctrl.update(createInput({ forward: true }), Math.PI, 0.05)
-  assert(stats.velocity.z > 0.1, 'Yaw PI: W should move along positive Z')
-
-  console.log('✔ 2. Camera-relative WASD at multiple yaws passed')
+  console.log('✔ 2. Camera-relative WASD at lateral angles passed')
 }
 
 // 3. Direction Reversal Braking Responsiveness
@@ -574,4 +649,189 @@ console.log('=== RUNNING CONQUER THE CITY TEST SUITE ===')
   console.log('✔ 11. Comprehensive lifecycle cleanup (EventBus, materials, player, colliders) passed')
 }
 
-console.log('=== ALL 11 TESTS PASSED SUCCESSFULLY! ===')
+// 12. Spawn-Area Initialization, Camera Synchronization, 360 Rotation, Round-Trip Travel & Collider Regression
+{
+  const { CityBuilder } = await import('../world/CityBuilder')
+  const { MaterialFactory } = await import('../world/MaterialFactory')
+
+  const scene = new THREE.Scene()
+  const col = new CollisionSystem()
+  const mat = new MaterialFactory()
+  const city = new CityBuilder(scene, mat, col)
+  city.build()
+
+  // Verify full collider set was built (50+ colliders)
+  const colliders = col.getColliders()
+  assert(colliders.length > 50, 'City colliders should be populated')
+
+  // Verify that distant obstacles (Crate_Step1 at X=-12, Lamp_Pole_9 at X=-20) do NOT overlap X at spawn (X=0)
+  const crate = colliders.find(c => c.id === 'Crate_Step1')
+  assert(!!crate, 'Crate_Step1 must exist in world')
+  const pole = colliders.find(c => c.id === 'Lamp_Pole_9')
+  assert(!!pole, 'Lamp_Pole_9 must exist in world')
+
+  const spawnX = 0
+  const halfW = 0.4
+  const skin = 0.002
+  const crateOverlapsX =
+    spawnX + halfW - skin > crate!.box.min.x && spawnX - halfW + skin < crate!.box.max.x
+  assert(!crateOverlapsX, 'Crate_Step1 (X=-12) must NOT have horizontal overlap with player at X=0')
+
+  const poleOverlapsX =
+    spawnX + halfW - skin > pole!.box.min.x && spawnX - halfW + skin < pole!.box.max.x
+  assert(!poleOverlapsX, 'Lamp_Pole_9 (X=-20) must NOT have horizontal overlap with player at X=0')
+
+  // 12a. Spawn Initialization & Grounding
+  const player = new Player()
+  player.setPosition(0, 0, 8)
+  const ctrl = new PlayerController(player, col)
+
+  const cam = new THREE.PerspectiveCamera(65, 1, 0.1, 400)
+  const tpCam = new ThirdPersonCamera(cam, col)
+  tpCam.snapBehindPlayer(ctrl.position, Math.PI)
+
+  // Verify player is grounded at y = 0 from frame 0
+  assert(ctrl.isGrounded, 'Player must be grounded immediately upon spawning')
+  assert(ctrl.position.y === 0, 'Player feet must be at ground level (y = 0)')
+  const groundH = col.getGroundHeight(ctrl.position.x, ctrl.position.y, ctrl.position.z, ctrl.radius)
+  assert(groundH === 0, 'Ground height at spawn (0, 0, 8) must be 0')
+
+  // Immediate Jump check on frame 0
+  const jumpStats = ctrl.update(createInput({ jump: true }), cam, 0.016)
+  assert(!jumpStats.isGrounded, 'Player must leave the ground immediately on jump')
+  assert(jumpStats.state === 'jumping', 'Player state must be jumping on frame 0')
+  assert(jumpStats.position.y > 0, 'Player position Y should increase above ground on jump')
+
+  // Reset to spawn
+  ctrl.teleport(0, 0, 8)
+  tpCam.snapBehindPlayer(ctrl.position, Math.PI)
+
+  // 12b. Camera Synchronization at Spawn
+  const camFwd = tpCam.getHorizontalForward()
+  assert(camFwd.z > 0.99 && Math.abs(camFwd.x) < 0.01, 'Initial camera forward must point North (+Z)')
+  const camRight = tpCam.getHorizontalRight()
+  assert(camRight.x < -0.99 && Math.abs(camRight.z) < 0.01, 'Initial camera right must point West (-X)')
+
+  // 12c. Immediate WASD near spawn: Moving forward (+Z) past Crate_Step1 z-bound
+  for (let i = 0; i < 25; i++) {
+    tpCam.update(ctrl.position, 0.016)
+    const s = ctrl.update(createInput({ forward: true }), cam, 0.016)
+    tpCam.update(s.position, 0.016)
+  }
+  assert(
+    ctrl.position.z > 9.5,
+    `Player pressing W must move freely past Z=8.4 without being blocked (reached Z=${ctrl.position.z.toFixed(2)})`
+  )
+  assert(ctrl.velocity.z > 4.5, 'Player must maintain full forward walking speed')
+
+  // Reset to spawn & test S (backward, -Z past Lamp_Pole_9 z-bound)
+  ctrl.teleport(0, 0, 8)
+  tpCam.snapBehindPlayer(ctrl.position, Math.PI)
+  for (let i = 0; i < 25; i++) {
+    tpCam.update(ctrl.position, 0.016)
+    const s = ctrl.update(createInput({ backward: true }), cam, 0.016)
+    tpCam.update(s.position, 0.016)
+  }
+  assert(
+    ctrl.position.z < 6.5,
+    `Player pressing S must move freely past Z=7.6 without being blocked (reached Z=${ctrl.position.z.toFixed(2)})`
+  )
+  assert(ctrl.velocity.z < -4.5, 'Player must maintain full backward walking speed')
+
+  // Reset to spawn & test A (left, +X)
+  ctrl.teleport(0, 0, 8)
+  tpCam.snapBehindPlayer(ctrl.position, Math.PI)
+  for (let i = 0; i < 20; i++) {
+    tpCam.update(ctrl.position, 0.016)
+    const s = ctrl.update(createInput({ left: true }), cam, 0.016)
+    tpCam.update(s.position, 0.016)
+  }
+  assert(ctrl.position.x > 1.0, `Player pressing A must move left (+X) (reached X=${ctrl.position.x.toFixed(2)})`)
+
+  // Reset to spawn & test D (right, -X)
+  ctrl.teleport(0, 0, 8)
+  tpCam.snapBehindPlayer(ctrl.position, Math.PI)
+  for (let i = 0; i < 20; i++) {
+    tpCam.update(ctrl.position, 0.016)
+    const s = ctrl.update(createInput({ right: true }), cam, 0.016)
+    tpCam.update(s.position, 0.016)
+  }
+  assert(ctrl.position.x < -1.0, `Player pressing D must move right (-X) (reached X=${ctrl.position.x.toFixed(2)})`)
+
+  // 12d. Diagonal Movement near spawn
+  ctrl.teleport(0, 0, 8)
+  tpCam.snapBehindPlayer(ctrl.position, Math.PI)
+  for (let i = 0; i < 20; i++) {
+    tpCam.update(ctrl.position, 0.016)
+    const s = ctrl.update(createInput({ forward: true, right: true }), cam, 0.016)
+    tpCam.update(s.position, 0.016)
+  }
+  assert(ctrl.position.z > 8.5 && ctrl.position.x < -0.5, 'Diagonal W+D must move forward-right')
+  assert(ctrl.velocity.length() <= ctrl.walkSpeed + 0.1, 'Diagonal speed must be normalized to walkSpeed')
+
+  // 12e. 360-Degree Mouse Camera Rotation at Spawn
+  ctrl.teleport(0, 0, 8)
+  tpCam.snapBehindPlayer(ctrl.position, Math.PI)
+  for (let step = 0; step < 12; step++) {
+    const mouseMoveX = -(Math.PI / 6) / tpCam.mouseSensitivity
+    tpCam.handleInput(mouseMoveX, 0, 0)
+    tpCam.update(ctrl.position, 0.05)
+
+    const fwd = tpCam.getHorizontalForward()
+    const stats = ctrl.update(createInput({ forward: true }), cam, 0.05)
+    assert(stats.speed > 2.0, `Player must move at 360 rotation step ${step} (yaw ${(tpCam.yaw * 180 / Math.PI).toFixed(0)} deg)`)
+
+    // Verify velocity aligns with camera forward
+    const dot = (stats.velocity.x * fwd.x + stats.velocity.z * fwd.z) / stats.speed
+    assert(dot > 0.8, `Movement velocity must align with camera horizontal forward (dot=${dot.toFixed(2)})`)
+
+    ctrl.teleport(0, 0, 8)
+  }
+
+  // 12f. Travel 10-20m away from spawn & return round-trip test
+  ctrl.teleport(0, 0, 8)
+  tpCam.snapBehindPlayer(ctrl.position, Math.PI)
+
+  // Sprint North 25m
+  for (let f = 0; f < 60; f++) {
+    tpCam.update(ctrl.position, 0.033)
+    ctrl.update(createInput({ forward: true, sprint: true }), cam, 0.033)
+    tpCam.update(ctrl.position, 0.033)
+  }
+  assert(ctrl.position.z > 25, `Player must travel 15+ meters away (reached Z=${ctrl.position.z.toFixed(2)})`)
+  assert(ctrl.velocity.length() > 9.0, 'Player must achieve full sprint speed away from spawn')
+
+  // Turn around 180 degrees and run back to spawn
+  tpCam.handleInput(-Math.PI / tpCam.mouseSensitivity, 0, 0)
+  tpCam.update(ctrl.position, 0.033)
+
+  while (ctrl.position.z > 8.05) {
+    tpCam.update(ctrl.position, 0.033)
+    ctrl.update(createInput({ forward: true, sprint: true }), cam, 0.033)
+    tpCam.update(ctrl.position, 0.033)
+  }
+  assert(Math.abs(ctrl.position.z - 8.0) < 0.5, 'Player must successfully navigate back to spawn')
+
+  // Continue moving through the spawn area to ensure no freeze or snag
+  for (let f = 0; f < 30; f++) {
+    tpCam.update(ctrl.position, 0.033)
+    const stats = ctrl.update(createInput({ forward: true }), cam, 0.033)
+    tpCam.update(ctrl.position, 0.033)
+    assert(stats.speed > 2.0, `Player must not stop or freeze upon returning to spawn area (frame ${f})`)
+  }
+
+  // 12g. Restart Game / Reset Position Test
+  ctrl.teleport(0, 0, 8)
+  tpCam.snapBehindPlayer(ctrl.position, Math.PI)
+  assert(ctrl.position.x === 0 && ctrl.position.y === 0 && ctrl.position.z === 8, 'Reset must restore spawn coords')
+  assert(ctrl.velocity.length() === 0, 'Reset must zero velocity')
+  assert(ctrl.isGrounded, 'Reset must ensure player is grounded')
+
+  city.dispose()
+  mat.dispose()
+  player.dispose()
+
+  console.log('✔ 12. Spawn-area movement, camera synchronization, 360-degree rotation, round-trip travel & collider regression passed')
+}
+
+console.log('=== ALL 12 TESTS PASSED SUCCESSFULLY! ===')

@@ -86,8 +86,8 @@ export class Engine {
 
     // 5. Player Entity & Controller
     this.player = new Player()
-    // Spawn player in the plaza facing North
-    this.player.setPosition(0, 0.5, 8)
+    // Spawn player in the plaza facing North at ground level
+    this.player.setPosition(0, 0, 8)
     this.scene.add(this.player.mesh)
 
     this.playerController = new PlayerController(this.player, this.collisionSystem)
@@ -163,10 +163,13 @@ export class Engine {
       // Mouse camera rotation
       this.thirdPersonCamera.handleInput(input.movementX, input.movementY, input.scrollDelta)
 
-      // Player kinematics & simulation
-      const playerStats = this.playerController.update(input, this.thirdPersonCamera.yaw, dt)
+      // Update camera orientation with latest mouse input
+      this.thirdPersonCamera.update(this.playerController.position, dt)
 
-      // Camera follow with smooth interpolation
+      // Player kinematics & simulation using camera's horizontal forward & right vectors
+      const playerStats = this.playerController.update(input, this.camera, dt)
+
+      // Update camera follow to track player's new position
       this.thirdPersonCamera.update(playerStats.position, dt)
 
       // Update directional light & shadow coverage
