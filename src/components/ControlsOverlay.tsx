@@ -72,12 +72,13 @@ export const ControlsOverlay: React.FC<ControlsOverlayProps> = ({
 
               <div className="char-portrait-container">
                 <img
-                  src="/models/aarav_idle_front.png"
+                  src="/images/characters/aarav-selection.png"
                   alt="Aarav - Tactical Enforcer"
                   className="char-portrait-img"
+                  loading="eager"
                   onError={e => {
-                    // Fallback if image load fails
-                    e.currentTarget.style.display = 'none'
+                    // Fallback to previous render if needed
+                    e.currentTarget.src = '/models/aarav_idle_front.png'
                   }}
                 />
               </div>
@@ -112,11 +113,13 @@ export const ControlsOverlay: React.FC<ControlsOverlayProps> = ({
 
               <div className="char-portrait-container">
                 <img
-                  src="/models/ananya_idle_front.png"
+                  src="/images/characters/ananya-selection.png"
                   alt="Ananya - Operations Architect"
                   className="char-portrait-img"
+                  loading="eager"
                   onError={e => {
-                    e.currentTarget.style.display = 'none'
+                    // Fallback to previous render if needed
+                    e.currentTarget.src = '/models/ananya_idle_front.png'
                   }}
                 />
               </div>
