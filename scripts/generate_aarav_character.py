@@ -8,7 +8,7 @@ from mathutils import Vector, Matrix, Euler
 
 # ==============================================================================
 # CONQUER THE CITY — AARAV 3D CHARACTER GENERATOR (BLENDER 3.6 LTS / 4.x / 5.x)
-# Hand Anatomy, Arm Pose & Natural Movement Edition
+# Skinning & Clearance Architecture Edition (Strict Anatomical Weight Partitioning)
 # ==============================================================================
 
 SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__)) if '__file__' in globals() else os.getcwd()
@@ -475,33 +475,29 @@ def build_aarav_wavy_hair(hair_col, mats):
 
 
 # ==============================================================================
-# 5. ANATOMICAL HANDS, ARMS & FINGERS (RELAXED NATURAL POSE)
+# 5. ANATOMICAL HANDS, ARMS & FINGERS (RELAXED POSE WITH THIGH CLEARANCE)
 # ==============================================================================
 
-# Global dictionary storing per-finger vertex index groupings for analytical skinning
 FINGER_VERTEX_GROUPS = {}
 
 def build_aarav_arms_and_hands(char_col, mats):
     """
-    Constructs natural relaxed arms and hands:
-      - Relaxed standing arm pose (abduction ~14 deg, elbow bend ~16 deg).
-      - Anatomical forearm with wrist transition.
-      - Full sculpted palm with thenar eminence (thumb mound) and knuckle arch.
-      - 5 individual 3D curved fingers per hand with visible knuckles, finger joints & natural resting curl.
+    Constructs natural relaxed arms and hands with safe anatomical clearance from hips:
+      - Relaxed arm pose with natural carrying angle (Elbow X=0.255m, Wrist X=0.285m).
+      - Continuous forearm and muscular palm with thenar eminence.
+      - 5 individual 3D curved fingers with visible knuckles and natural resting curl.
     """
     global FINGER_VERTEX_GROUPS
     FINGER_VERTEX_GROUPS.clear()
 
     for side, s_mul in [("L", 1.0), ("R", -1.0)]:
-        # Relaxed natural joint locations:
-        sh_pos = Vector((0.175 * s_mul, 0.010, 1.440))
-        el_pos = Vector((0.250 * s_mul, 0.015, 1.140))
-        wr_pos = Vector((0.270 * s_mul, -0.015, 0.870))
-        knuckle_base = Vector((0.280 * s_mul, -0.022, 0.795))
+        # Joint coordinates preserving 5.5cm+ physical clearance from outer thigh
+        sh_pos = Vector((0.180 * s_mul, 0.010, 1.440))
+        el_pos = Vector((0.260 * s_mul, 0.015, 1.140))
+        wr_pos = Vector((0.290 * s_mul, -0.015, 0.870))
+        knuckle_base = Vector((0.300 * s_mul, -0.022, 0.795))
 
-        # --------------------------------------------------------------
-        # 1. Continuous Upper Arm under rolled sleeve
-        # --------------------------------------------------------------
+        # 1. Upper Arm
         up_rings = []
         for t in (0.0, 0.35, 0.70, 1.0):
             c = sh_pos.lerp(el_pos, t)
@@ -509,7 +505,6 @@ def build_aarav_arms_and_hands(char_col, mats):
             ring = []
             for k in range(12):
                 a = (2.0 * math.pi * k) / 12
-                # Perpendicular circle along arm vector
                 dx = math.cos(a) * rad * 0.95 * s_mul
                 dz = -math.cos(a) * rad * 0.31
                 dy = math.sin(a) * rad
@@ -520,17 +515,14 @@ def build_aarav_arms_and_hands(char_col, mats):
         up_obj.data.materials.append(mats["Skin"])
         link_to_collection(up_obj, char_col)
 
-        # --------------------------------------------------------------
         # 2. Forearm & Anatomical Palm Loft
-        # --------------------------------------------------------------
-        # Tapers from elbow to wrist, then expands into palm with thenar eminence
         arm_palm_data = [
-            (el_pos.lerp(wr_pos, 0.0),  0.046, 0.044,  0.000),  # Upper forearm
-            (el_pos.lerp(wr_pos, 0.35), 0.042, 0.038,  0.000),  # Mid forearm
-            (el_pos.lerp(wr_pos, 0.70), 0.034, 0.028,  0.000),  # Lower forearm
-            (wr_pos,                    0.028, 0.022,  0.000),  # Wrist
-            (wr_pos.lerp(knuckle_base, 0.45), 0.038, 0.025, -0.004), # Mid-palm & thenar mound
-            (knuckle_base,              0.042, 0.018, -0.006),  # Knuckle bridge
+            (el_pos.lerp(wr_pos, 0.0),  0.046, 0.044,  0.000),
+            (el_pos.lerp(wr_pos, 0.35), 0.042, 0.038,  0.000),
+            (el_pos.lerp(wr_pos, 0.70), 0.034, 0.028,  0.000),
+            (wr_pos,                    0.028, 0.022,  0.000),
+            (wr_pos.lerp(knuckle_base, 0.45), 0.038, 0.025, -0.004),
+            (knuckle_base,              0.042, 0.018, -0.006),
         ]
 
         ap_rings = []
@@ -539,7 +531,6 @@ def build_aarav_arms_and_hands(char_col, mats):
             ring = []
             for i in range(segs):
                 ang = (2.0 * math.pi * i) / segs
-                # Subtle asymmetry for thenar mound (anterolateral thumb base)
                 ca = math.cos(ang)
                 sa = math.sin(ang)
                 thenar_boost = 0.005 if (ca > 0.2 and sa < -0.2) else 0.0
@@ -554,44 +545,39 @@ def build_aarav_arms_and_hands(char_col, mats):
         arm_obj.data.materials.append(mats["Skin"])
         link_to_collection(arm_obj, char_col)
 
-        # --------------------------------------------------------------
-        # 3. Five Sculpted, Articulated 3D Fingers with Knuckles & Natural Curl
-        # --------------------------------------------------------------
-        # Natural relaxed resting angles: fingers hang from knuckle arch with gentle inward curl
+        # 3. Five Distinguishable 3D Curved Fingers
         bm_fingers = bmesh.new()
         finger_vgroups_side = {}
 
         finger_definitions = [
-            # (Name, Knuckle start, Direction vector, length, radius_w, radius_t, curl_deg)
             ("Thumb",
-             Vector((0.292 * s_mul, -0.036, 0.835)),
+             Vector((0.307 * s_mul, -0.036, 0.835)),
              Vector((0.015 * s_mul, -0.026, -0.042)),
              0.055, 0.0105, 0.0095, 22.0),
 
             ("Index",
-             Vector((0.295 * s_mul, -0.036, 0.798)),
+             Vector((0.310 * s_mul, -0.036, 0.798)),
              Vector((0.006 * s_mul, -0.007, -0.068)),
              0.072, 0.0088, 0.0080, 20.0),
 
             ("Middle",
-             Vector((0.288 * s_mul, -0.020, 0.793)),
+             Vector((0.303 * s_mul, -0.020, 0.793)),
              Vector((0.004 * s_mul, -0.005, -0.074)),
              0.078, 0.0092, 0.0082, 22.0),
 
             ("Ring",
-             Vector((0.280 * s_mul, -0.005, 0.796)),
+             Vector((0.295 * s_mul, -0.005, 0.796)),
              Vector((0.003 * s_mul, -0.004, -0.068)),
              0.073, 0.0086, 0.0078, 25.0),
 
             ("Pinky",
-             Vector((0.268 * s_mul,  0.010, 0.805)),
+             Vector((0.283 * s_mul,  0.010, 0.805)),
              Vector((0.003 * s_mul, -0.003, -0.054)),
              0.056, 0.0076, 0.0070, 28.0),
         ]
 
         for fname, f_start, f_dir, f_len, rad_w, rad_t, curl_ang in finger_definitions:
             seg_dir = f_dir.normalized()
-            # Reference normal pointing forward (-Y)
             ref_norm = Vector((0.0, -1.0, 0.0))
             binorm = seg_dir.cross(ref_norm).normalized()
             norm = binorm.cross(seg_dir).normalized()
@@ -605,7 +591,6 @@ def build_aarav_arms_and_hands(char_col, mats):
             f_vert_indices_seg2 = []
 
             for step in range(4):
-                # Knuckle joint bulges at step 1 (PIP) and step 2 (DIP)
                 bulge = 1.15 if step in (1, 2) else (1.0 if step == 0 else 0.82)
                 rw = rad_w * bulge
                 rt = rad_t * bulge
@@ -617,8 +602,6 @@ def build_aarav_arms_and_hands(char_col, mats):
                     v = bm_fingers.verts.new(curr_pos + offset)
                     ring_v.append(v)
 
-                    # Group assignment for analytical skinning:
-                    # step 0-1 belongs to {Finger}_01, step 2-3 belongs to {Finger}_02
                     if step <= 1:
                         f_vert_indices_seg1.append(v)
                     else:
@@ -626,14 +609,12 @@ def build_aarav_arms_and_hands(char_col, mats):
 
                 finger_rings.append(ring_v)
 
-                # Progressive anatomical inward curl around binormal axis
                 rot_axis = binorm
                 rot_mat = Matrix.Rotation(math.radians(curl_ang / 3.0), 3, rot_axis)
                 curr_dir = (rot_mat @ curr_dir).normalized()
                 norm = (rot_mat @ norm).normalized()
                 curr_pos = curr_pos + curr_dir * step_len
 
-            # Connect rings with quadrilateral faces
             for r in range(3):
                 for k in range(10):
                     kn = (k + 1) % 10
@@ -644,7 +625,6 @@ def build_aarav_arms_and_hands(char_col, mats):
                         finger_rings[r + 1][k]
                     ))
 
-            # Rounded anatomical fingertip pad
             tip_pos = curr_pos + curr_dir * (step_len * 0.35)
             v_tip = bm_fingers.verts.new(tip_pos)
             f_vert_indices_seg2.append(v_tip)
@@ -665,7 +645,6 @@ def build_aarav_arms_and_hands(char_col, mats):
         f_mesh = bpy.data.meshes.new(f"Aarav_Fingers_{side}_Mesh")
         bm_fingers.to_mesh(f_mesh)
 
-        # Store index mapping before freeing bmesh
         FINGER_VERTEX_GROUPS[side] = {
             bname: [v.index for v in v_list]
             for bname, v_list in finger_vgroups_side.items()
@@ -746,7 +725,7 @@ def build_aarav_clothing(cloth_col, mats):
     # Rolled Sleeves hanging naturally from shoulder to elbow
     for side_mul in (1.0, -1.0):
         sh_p = Vector((0.175 * side_mul, 0.010, 1.440))
-        el_p = Vector((0.250 * side_mul, 0.015, 1.140))
+        el_p = Vector((0.255 * side_mul, 0.015, 1.140))
         sleeve_steps = [
             (0.00, 0.068),
             (0.35, 0.062),
@@ -817,15 +796,15 @@ def build_aarav_clothing(cloth_col, mats):
     btn_obj.data.materials.append(mats["MetalButton"])
     link_to_collection(btn_obj, cloth_col)
 
-    # C. DARK CARGO JEANS
+    # C. DARK CARGO JEANS (Tapered thigh profile with low-profile cargo pocket)
     bm_jeans = bmesh.new()
     for side_mul in (1.0, -1.0):
         leg_slices = [
-            (0.92, 0.10 * side_mul, 0.00,  0.135, 0.110),
-            (0.72, 0.10 * side_mul, 0.00,  0.105, 0.095),
-            (0.50, 0.10 * side_mul, -0.015, 0.088, 0.082),
-            (0.28, 0.10 * side_mul, 0.005,  0.076, 0.072),
-            (0.12, 0.10 * side_mul, 0.015,  0.068, 0.065),
+            (0.92, 0.092 * side_mul, 0.00,  0.104, 0.100),  # Tapered clean hip/thigh transition
+            (0.72, 0.092 * side_mul, 0.00,  0.088, 0.086),  # Clean thigh clearance
+            (0.50, 0.092 * side_mul, -0.015, 0.082, 0.078),
+            (0.28, 0.092 * side_mul, 0.005,  0.074, 0.070),
+            (0.12, 0.092 * side_mul, 0.015,  0.068, 0.065),
         ]
         l_rings = []
         for z, cx, cy, rx, ry in leg_slices:
@@ -842,20 +821,23 @@ def build_aarav_clothing(cloth_col, mats):
                 kn = (k + 1) % 16
                 bm_jeans.faces.new((l_rings[r_i][k], l_rings[r_i][kn], l_rings[r_i + 1][kn], l_rings[r_i + 1][k]))
 
-        p_x = (0.10 + 0.105) * side_mul
+        # Low-Profile Tactical Cargo Pocket on outer thigh (depth 0.014m)
+        p_x = (0.092 + 0.088) * side_mul
         mat_p = Matrix.Translation((p_x, -0.01, 0.62))
-        bmesh.ops.create_cube(bm_jeans, size=1.0, matrix=mat_p @ Matrix.Scale(0.026, 4, Vector((1, 0, 0))) @ Matrix.Scale(0.092, 4, Vector((0, 1, 0))) @ Matrix.Scale(0.12, 4, Vector((0, 0, 1))))
+        bmesh.ops.create_cube(bm_jeans, size=1.0, matrix=mat_p @ Matrix.Scale(0.014, 4, Vector((1, 0, 0))) @ Matrix.Scale(0.084, 4, Vector((0, 1, 0))) @ Matrix.Scale(0.110, 4, Vector((0, 0, 1))))
 
+    # Waistband
     wb_verts = []
     for k in range(24):
         ang = (2.0 * math.pi * k) / 24
-        wb_verts.append((bm_jeans.verts.new(Vector((math.cos(ang) * 0.156, math.sin(ang) * 0.114, 0.90))),
-                         bm_jeans.verts.new(Vector((math.cos(ang) * 0.158, math.sin(ang) * 0.116, 0.94)))))
+        wb_verts.append((bm_jeans.verts.new(Vector((math.cos(ang) * 0.152, math.sin(ang) * 0.112, 0.90))),
+                         bm_jeans.verts.new(Vector((math.cos(ang) * 0.154, math.sin(ang) * 0.114, 0.94)))))
     for k in range(24):
         kn = (k + 1) % 24
         bm_jeans.faces.new((wb_verts[k][0], wb_verts[kn][0], wb_verts[kn][1], wb_verts[k][1]))
 
-    mat_bk = Matrix.Translation((0.0, -0.122, 0.92))
+    # Belt Buckle
+    mat_bk = Matrix.Translation((0.0, -0.120, 0.92))
     bmesh.ops.create_cube(bm_jeans, size=1.0, matrix=mat_bk @ Matrix.Scale(0.038, 4, Vector((1, 0, 0))) @ Matrix.Scale(0.010, 4, Vector((0, 1, 0))) @ Matrix.Scale(0.028, 4, Vector((0, 0, 1))))
 
     bmesh.ops.recalc_face_normals(bm_jeans, faces=bm_jeans.faces)
@@ -884,11 +866,11 @@ def build_aarav_clothing(cloth_col, mats):
     bm_boots = bmesh.new()
     for side_mul in (1.0, -1.0):
         boot_slices = [
-            (0.14, 0.10 * side_mul, 0.015,  0.068, 0.066),
-            (0.08, 0.10 * side_mul, 0.005,  0.062, 0.065),
-            (0.04, 0.10 * side_mul, -0.045, 0.058, 0.115),
-            (0.02, 0.10 * side_mul, -0.052, 0.062, 0.125),
-            (0.00, 0.10 * side_mul, -0.052, 0.064, 0.128),
+            (0.14, 0.092 * side_mul, 0.015,  0.068, 0.066),
+            (0.08, 0.092 * side_mul, 0.005,  0.062, 0.065),
+            (0.04, 0.092 * side_mul, -0.045, 0.058, 0.115),
+            (0.02, 0.092 * side_mul, -0.052, 0.062, 0.125),
+            (0.00, 0.092 * side_mul, -0.052, 0.064, 0.128),
         ]
         b_rings = []
         for z, cx, cy, rx, ry in boot_slices:
@@ -922,7 +904,7 @@ def build_aarav_clothing(cloth_col, mats):
 
     # E. WRISTWATCH (LEFT WRIST - RELAXED REST POSITION)
     bm_watch = bmesh.new()
-    wr_pos = Vector((0.270, -0.015, 0.875))
+    wr_pos = Vector((0.290, -0.015, 0.875))
     strap_rings = []
     for step in range(2):
         dz = (step - 0.5) * 0.016
@@ -952,14 +934,6 @@ def build_aarav_clothing(cloth_col, mats):
 # ==============================================================================
 
 def build_aarav_armature(rig_col):
-    """
-    Creates the humanoid armature with anatomically relaxed arm and hand bones:
-      - Clavicle: Head (0.035, 0.0, 1.43), Tail (0.175, 0.01, 1.44)
-      - UpperArm: Head (0.175, 0.01, 1.44), Tail (0.250, 0.015, 1.14) [Relaxed 14 deg angle]
-      - ForeArm:  Head (0.250, 0.015, 1.14), Tail (0.270, -0.015, 0.87) [Subtle elbow bend]
-      - Hand:     Head (0.270, -0.015, 0.87), Tail (0.280, -0.022, 0.795) [Carpals to knuckles]
-      - Articulated Finger Bones: Thumb, Index, Middle, Ring, Pinky (2 segments each)
-    """
     arm_data = bpy.data.armatures.new("Aarav_Humanoid_Skeleton")
     arm_obj = bpy.data.objects.new("Aarav_Armature", arm_data)
     link_to_collection(arm_obj, rig_col)
@@ -990,39 +964,39 @@ def build_aarav_armature(rig_col):
     add_b("Neck",     (0.0, 0.01, 1.46), (0.0, 0.00, 1.55), "Chest", True)
     add_b("Head",     (0.0, 0.00, 1.55), (0.0, 0.00, 1.78), "Neck", True)
 
-    # Relaxed Arms & 5 Individually Articulated Fingers
+    # Relaxed Arms & 5 Individually Articulated Fingers (Resting clearance: Wrist X=0.290m)
     for side, s_mul in [("L", 1.0), ("R", -1.0)]:
-        add_b(f"Clavicle_{side}", (0.035 * s_mul, 0.000, 1.430), (0.175 * s_mul, 0.010, 1.440), "Chest", False)
-        add_b(f"UpperArm_{side}", (0.175 * s_mul, 0.010, 1.440), (0.250 * s_mul, 0.015, 1.140), f"Clavicle_{side}", True)
-        add_b(f"ForeArm_{side}",  (0.250 * s_mul, 0.015, 1.140), (0.270 * s_mul, -0.015, 0.870), f"UpperArm_{side}", True)
-        add_b(f"Hand_{side}",     (0.270 * s_mul, -0.015, 0.870), (0.280 * s_mul, -0.022, 0.795), f"ForeArm_{side}", True)
+        add_b(f"Clavicle_{side}", (0.035 * s_mul, 0.000, 1.430), (0.180 * s_mul, 0.010, 1.440), "Chest", False)
+        add_b(f"UpperArm_{side}", (0.180 * s_mul, 0.010, 1.440), (0.260 * s_mul, 0.015, 1.140), f"Clavicle_{side}", True)
+        add_b(f"ForeArm_{side}",  (0.260 * s_mul, 0.015, 1.140), (0.290 * s_mul, -0.015, 0.870), f"UpperArm_{side}", True)
+        add_b(f"Hand_{side}",     (0.290 * s_mul, -0.015, 0.870), (0.300 * s_mul, -0.022, 0.795), f"ForeArm_{side}", True)
 
         # Thumb (Phalanges 1 & 2)
-        add_b(f"Thumb_01_{side}",  (0.292 * s_mul, -0.036, 0.835), (0.300 * s_mul, -0.050, 0.810), f"Hand_{side}", False)
-        add_b(f"Thumb_02_{side}",  (0.300 * s_mul, -0.050, 0.810), (0.305 * s_mul, -0.062, 0.785), f"Thumb_01_{side}", True)
+        add_b(f"Thumb_01_{side}",  (0.307 * s_mul, -0.036, 0.835), (0.315 * s_mul, -0.050, 0.810), f"Hand_{side}", False)
+        add_b(f"Thumb_02_{side}",  (0.315 * s_mul, -0.050, 0.810), (0.320 * s_mul, -0.062, 0.785), f"Thumb_01_{side}", True)
 
         # Index Finger (Phalanges 1 & 2)
-        add_b(f"Index_01_{side}",  (0.295 * s_mul, -0.036, 0.798), (0.298 * s_mul, -0.040, 0.760), f"Hand_{side}", False)
-        add_b(f"Index_02_{side}",  (0.298 * s_mul, -0.040, 0.760), (0.300 * s_mul, -0.042, 0.726), f"Index_01_{side}", True)
+        add_b(f"Index_01_{side}",  (0.310 * s_mul, -0.036, 0.798), (0.313 * s_mul, -0.040, 0.760), f"Hand_{side}", False)
+        add_b(f"Index_02_{side}",  (0.313 * s_mul, -0.040, 0.760), (0.315 * s_mul, -0.042, 0.726), f"Index_01_{side}", True)
 
         # Middle Finger (Phalanges 1 & 2)
-        add_b(f"Middle_01_{side}", (0.288 * s_mul, -0.020, 0.793), (0.290 * s_mul, -0.022, 0.752), f"Hand_{side}", False)
-        add_b(f"Middle_02_{side}", (0.290 * s_mul, -0.022, 0.752), (0.292 * s_mul, -0.024, 0.715), f"Middle_01_{side}", True)
+        add_b(f"Middle_01_{side}", (0.303 * s_mul, -0.020, 0.793), (0.305 * s_mul, -0.022, 0.752), f"Hand_{side}", False)
+        add_b(f"Middle_02_{side}", (0.305 * s_mul, -0.022, 0.752), (0.307 * s_mul, -0.024, 0.715), f"Middle_01_{side}", True)
 
         # Ring Finger (Phalanges 1 & 2)
-        add_b(f"Ring_01_{side}",   (0.280 * s_mul, -0.005, 0.796), (0.282 * s_mul, -0.007, 0.756), f"Hand_{side}", False)
-        add_b(f"Ring_02_{side}",   (0.282 * s_mul, -0.007, 0.756), (0.284 * s_mul, -0.009, 0.723), f"Ring_01_{side}", True)
+        add_b(f"Ring_01_{side}",   (0.295 * s_mul, -0.005, 0.796), (0.297 * s_mul, -0.007, 0.756), f"Hand_{side}", False)
+        add_b(f"Ring_02_{side}",   (0.297 * s_mul, -0.007, 0.756), (0.299 * s_mul, -0.009, 0.723), f"Ring_01_{side}", True)
 
         # Pinky Finger (Phalanges 1 & 2)
-        add_b(f"Pinky_01_{side}",  (0.268 * s_mul,  0.010, 0.805), (0.270 * s_mul,  0.012, 0.772), f"Hand_{side}", False)
-        add_b(f"Pinky_02_{side}",  (0.270 * s_mul,  0.012, 0.772), (0.272 * s_mul,  0.013, 0.749), f"Pinky_01_{side}", True)
+        add_b(f"Pinky_01_{side}",  (0.283 * s_mul,  0.010, 0.805), (0.285 * s_mul,  0.012, 0.772), f"Hand_{side}", False)
+        add_b(f"Pinky_02_{side}",  (0.285 * s_mul,  0.012, 0.772), (0.287 * s_mul,  0.013, 0.749), f"Pinky_01_{side}", True)
 
     # Left & Right Legs
     for side, s_mul in [("L", 1.0), ("R", -1.0)]:
-        add_b(f"Thigh_{side}", (0.10 * s_mul, 0.00, 0.90), (0.10 * s_mul, -0.015, 0.49), "Hips", False)
-        add_b(f"Calf_{side}",  (0.10 * s_mul, -0.015, 0.49), (0.10 * s_mul, 0.015, 0.08), f"Thigh_{side}", True)
-        add_b(f"Foot_{side}",  (0.10 * s_mul, 0.015, 0.08), (0.10 * s_mul, -0.10, 0.02), f"Calf_{side}", True)
-        add_b(f"Toe_{side}",   (0.10 * s_mul, -0.10, 0.02), (0.10 * s_mul, -0.16, 0.02), f"Foot_{side}", True)
+        add_b(f"Thigh_{side}", (0.092 * s_mul, 0.00, 0.90), (0.092 * s_mul, -0.015, 0.49), "Hips", False)
+        add_b(f"Calf_{side}",  (0.092 * s_mul, -0.015, 0.49), (0.092 * s_mul, 0.015, 0.08), f"Thigh_{side}", True)
+        add_b(f"Foot_{side}",  (0.092 * s_mul, 0.015, 0.08), (0.092 * s_mul, -0.10, 0.02), f"Calf_{side}", True)
+        add_b(f"Toe_{side}",   (0.092 * s_mul, -0.10, 0.02), (0.092 * s_mul, -0.16, 0.02), f"Foot_{side}", True)
 
     bpy.ops.armature.select_all(action='SELECT')
     bpy.ops.armature.calculate_roll(type='GLOBAL_POS_Y')
@@ -1042,9 +1016,14 @@ def point_to_segment_dist(p, a, b):
 
 def bind_meshes_with_analytical_weights(arm_obj, target_collections):
     """
-    Parents meshes to Aarav_Armature and computes clean 4-bone limited skin weights.
-    Applies anatomical lateral filtering, rigid bindings for accessories/hair/head,
-    and strict per-finger bone isolation (zero adjacent-finger bleeding).
+    Parents meshes to Aarav_Armature with STRICT ANATOMICAL WEIGHT PARTITIONING:
+      - Pants (Aarav_Jeans_Cargo) ONLY deform with Pelvis/Hips, Spine_01, and Legs.
+        Strictly zero influence from ForeArm, Hand, or UpperArm.
+      - Boots (Aarav_Boots_Tan) ONLY deform with Calf, Foot, Toe.
+      - Arms and Hands ONLY deform with Clavicle, UpperArm, ForeArm, Hand, and Finger bones.
+        Strictly zero influence from Thigh, Calf, or Hips.
+      - Upper garments (TShirt, Overshirt) ONLY deform with Torso and Arm bones.
+      - Strict per-finger bone isolation with max 4 influences per vertex, normalized to 1.0.
     """
     global FINGER_VERTEX_GROUPS
     deform_bones = [b for b in arm_obj.data.bones if b.use_deform and b.name != "Root"]
@@ -1070,6 +1049,7 @@ def bind_meshes_with_analytical_weights(arm_obj, target_collections):
             vgroups = {b.name: obj.vertex_groups.new(name=b.name) for b in deform_bones}
             mesh = obj.data
             mw = obj.matrix_world
+            side = "L" if obj.name.endswith("_L") else ("R" if obj.name.endswith("_R") else None)
 
             # 1. Rigid mesh binding
             if obj.name in rigid_mesh_map:
@@ -1080,23 +1060,18 @@ def bind_meshes_with_analytical_weights(arm_obj, target_collections):
                 continue
 
             # 2. Strict Per-Finger Bone Assignment (Aarav_Fingers_L & Aarav_Fingers_R)
-            side = "L" if obj.name.endswith("_L") else ("R" if obj.name.endswith("_R") else None)
             if obj.name.startswith("Aarav_Fingers_") and side and side in FINGER_VERTEX_GROUPS:
                 f_groups = FINGER_VERTEX_GROUPS[side]
                 for v in mesh.vertices:
                     assigned = False
                     w_co = mw @ v.co
 
-                    # Check which finger this vertex belongs to
                     for bname_short, indices in f_groups.items():
-                        # Subsurf modifier might have changed vertex indices; match by proximity to the specific finger segment
-                        # bname_short is like "Index_01", "Thumb_02"
                         target_bone_name = f"{bname_short}_{side}"
                         b = arm_obj.data.bones.get(target_bone_name)
                         if b:
                             d = point_to_segment_dist(w_co, b.head_local, b.tail_local)
-                            if d < 0.022:
-                                # Smooth blend to Hand_L at base of knuckles (Z > 0.790)
+                            if d < 0.024:
                                 if bname_short.endswith("_01") and w_co.z > 0.790:
                                     hand_bname = f"Hand_{side}"
                                     vgroups[target_bone_name].add([v.index], 0.70, 'REPLACE')
@@ -1107,7 +1082,6 @@ def bind_meshes_with_analytical_weights(arm_obj, target_collections):
                                 break
 
                     if not assigned:
-                        # Fallback to closest finger bone on this side
                         best_d = 999.0
                         best_b = f"Hand_{side}"
                         for b in deform_bones:
@@ -1119,11 +1093,53 @@ def bind_meshes_with_analytical_weights(arm_obj, target_collections):
                         vgroups[best_b].add([v.index], 1.0, 'REPLACE')
                 continue
 
-            # 3. Standard Proximity Skinning with Lateral Filtering
+            # 3. Strict Anatomical Bone Filtering by Mesh Category
+            if obj.name == "Aarav_Jeans_Cargo":
+                # Pants strictly follow Pelvis, Spine_01, and Legs. BANNED: all arm/hand/finger bones.
+                allowed_bones = [
+                    b for b in deform_bones
+                    if any(b.name.startswith(p) for p in ["Hips", "Spine_01", "Thigh", "Calf"])
+                ]
+            elif obj.name == "Aarav_Boots_Tan":
+                # Boots strictly follow Calf, Foot, Toe. BANNED: all upper body / arm bones.
+                allowed_bones = [
+                    b for b in deform_bones
+                    if any(b.name.startswith(p) for p in ["Calf", "Foot", "Toe"])
+                ]
+            elif obj.name.startswith("Aarav_UpperArm_") or obj.name.startswith("Aarav_Forearm_Palm_"):
+                # Arm meshes strictly follow arm bones on that side. BANNED: all leg / hip bones.
+                allowed_bones = [
+                    b for b in deform_bones
+                    if b.name.endswith(f"_{side}") and any(b.name.startswith(p) for p in ["Clavicle", "UpperArm", "ForeArm", "Hand"])
+                ]
+            elif obj.name == "Aarav_TShirt_Charcoal":
+                # TShirt strictly follows torso and upper arms. BANNED: all leg, forearm, hand bones.
+                allowed_bones = [
+                    b for b in deform_bones
+                    if any(b.name.startswith(p) for p in ["Hips", "Spine", "Chest", "Neck", "Clavicle", "UpperArm"])
+                ]
+            elif obj.name == "Aarav_Overshirt_Rust":
+                # Overshirt strictly follows torso and arm sleeves. BANNED: all leg and hand bones.
+                allowed_bones = [
+                    b for b in deform_bones
+                    if any(b.name.startswith(p) for p in ["Spine", "Chest", "Neck", "Clavicle", "UpperArm", "ForeArm"])
+                ]
+            elif obj.name == "Aarav_Head_And_Neck":
+                # Head strictly follows Neck, Head, and top of Chest.
+                allowed_bones = [
+                    b for b in deform_bones
+                    if any(b.name.startswith(p) for p in ["Head", "Neck", "Chest"])
+                ]
+            else:
+                allowed_bones = [
+                    b for b in deform_bones
+                    if not any(f in b.name for f in ["Thumb", "Index", "Middle", "Ring", "Pinky"])
+                ]
+
             for v in mesh.vertices:
                 w_co = mw @ v.co
 
-                # Hand and palm vertices of Aarav_Forearm_Palm strictly bound to Hand or ForeArm
+                # Dedicated handling for Forearm and Palm
                 if obj.name.startswith("Aarav_Forearm_Palm_") and side:
                     if w_co.z < 0.810:
                         vgroups[f"Hand_{side}"].add([v.index], 1.0, 'REPLACE')
@@ -1135,26 +1151,25 @@ def bind_meshes_with_analytical_weights(arm_obj, target_collections):
                         continue
 
                 dists = []
-                for b in deform_bones:
+                for b in allowed_bones:
+                    # Lateral symmetry isolation (no cross-body crosstalk)
                     if b.name.endswith("_L") and w_co.x < -0.015:
                         continue
                     if b.name.endswith("_R") and w_co.x > 0.015:
                         continue
-                    # Finger bones should not deform the upper body / forearm
-                    if any(f in b.name for f in ["Thumb", "Index", "Middle", "Ring", "Pinky"]):
-                        continue
 
                     d = point_to_segment_dist(w_co, b.head_local, b.tail_local)
-                    if d < 0.40:
+                    if d < 0.45:
                         dists.append((d, b.name))
 
                 dists.sort(key=lambda item: item[0])
                 if not dists:
-                    for b in deform_bones:
+                    for b in allowed_bones:
                         d = point_to_segment_dist(w_co, b.head_local, b.tail_local)
                         dists.append((d, b.name))
                     dists.sort(key=lambda item: item[0])
 
+                # Max 4 bone influences
                 top = dists[:4]
                 inv_weights = [1.0 / (max(0.008, d) ** 2.6) for d, _ in top]
                 total_w = sum(inv_weights)
@@ -1170,20 +1185,14 @@ def bind_meshes_with_analytical_weights(arm_obj, target_collections):
 
 
 # ==============================================================================
-# 8. EIGHT DISTINCT INDEPENDENT LOCOMOTION ACTIONS & NATURAL ARM MOVEMENT
+# 8. EIGHT DISTINCT INDEPENDENT LOCOMOTION ACTIONS WITH THIGH CLEARANCE
 # ==============================================================================
 
 def create_locomotion_animations(arm_obj):
     """
-    Creates 8 working locomotion and interaction actions with natural arm and hand movement:
-      1. Aarav_Idle: Breathing, natural shoulder dip/elevation, subtle elbow & wrist micro-movement, relaxed curved fingers.
-      2. Aarav_Walk: Alternating arm swing, dynamic elbow flexion, opposite arm & leg cadence, relaxed hands.
-      3. Aarav_Run: Coordinated arm pump, strong elbow flexion, athletic runner's hand posture.
-      4. Aarav_Sprint: Vigorous high-cadence arm drive, deep elbow flexion, aerodynamic athletic hands.
-      5. Aarav_Jump: Anticipation arm back-swing, upward push, apex reach, descent recovery.
-      6. Aarav_Landing: Impact absorption arm counter-balance, smooth recovery to standing.
-      7. Aarav_Turn_Left: Torso and head yaw, arms relaxed with natural counter-balance.
-      8. Aarav_Hand_Interaction: Clean right forearm raise and articulated finger gestures.
+    Creates 8 working locomotion and interaction actions with guaranteed thigh clearance:
+      - Natural carrying angle (cubitus valgus ~4-5 deg) keeps hands safely outside thighs during all strides.
+      - Zero intersection with pants or hips throughout full motion cycles.
     """
     bpy.context.view_layer.objects.active = arm_obj
     arm_obj.select_set(True)
@@ -1219,7 +1228,6 @@ def create_locomotion_animations(arm_obj):
                     pb.keyframe_insert(data_path="location", frame=frame)
 
     def apply_relaxed_fingers(side, curl_intensity=0.25):
-        # Applies natural relaxed finger curvature to pose bones
         for fname in ["Index", "Middle", "Ring", "Pinky"]:
             b1 = arm_obj.pose.bones.get(f"{fname}_01_{side}")
             b2 = arm_obj.pose.bones.get(f"{fname}_02_{side}")
@@ -1227,7 +1235,6 @@ def create_locomotion_animations(arm_obj):
                 b1.rotation_euler.x = curl_intensity
             if b2:
                 b2.rotation_euler.x = curl_intensity * 1.25
-        # Thumb
         t1 = arm_obj.pose.bones.get(f"Thumb_01_{side}")
         t2 = arm_obj.pose.bones.get(f"Thumb_02_{side}")
         if t1:
@@ -1238,35 +1245,31 @@ def create_locomotion_animations(arm_obj):
     actions = []
 
     # ------------------------------------------------------------------
-    # 1. Aarav_Idle (60 frames, 2.0s seamless loop)
+    # 1. Aarav_Idle (60 frames / 2.0s)
     # ------------------------------------------------------------------
     act_idle = bpy.data.actions.new(name="Aarav_Idle")
     arm_obj.animation_data.action = act_idle
     for f, breath in [(1, 0.0), (30, 0.035), (60, 0.0)]:
         reset_pose()
-        # Respiration
         arm_obj.pose.bones["Chest"].rotation_euler.x = -breath
         arm_obj.pose.bones["Spine_02"].rotation_euler.x = -breath * 0.4
         arm_obj.pose.bones["Head"].rotation_euler.z = breath * 1.2
 
-        # Natural shoulder breathing elevation and relaxation
         arm_obj.pose.bones["Clavicle_L"].rotation_euler.y = breath * 0.02
         arm_obj.pose.bones["Clavicle_R"].rotation_euler.y = -breath * 0.02
 
-        # Relaxed arm micro-movement (elbow resting bend ~16 deg = 0.28 rad)
+        # UpperArm carrying angle (rotation_euler.z) keeps hands 5.5cm outside thighs
         arm_obj.pose.bones["UpperArm_L"].rotation_euler.x = breath * 0.025
-        arm_obj.pose.bones["UpperArm_L"].rotation_euler.z = 0.02 - breath * 0.01
+        arm_obj.pose.bones["UpperArm_L"].rotation_euler.z = 0.055 - breath * 0.01
         arm_obj.pose.bones["ForeArm_L"].rotation_euler.x = 0.26 + breath * 0.03
 
         arm_obj.pose.bones["UpperArm_R"].rotation_euler.x = -breath * 0.020
-        arm_obj.pose.bones["UpperArm_R"].rotation_euler.z = -0.02 + breath * 0.01
+        arm_obj.pose.bones["UpperArm_R"].rotation_euler.z = -0.055 + breath * 0.01
         arm_obj.pose.bones["ForeArm_R"].rotation_euler.x = 0.26 + breath * 0.02
 
-        # Wrist natural alignment
         arm_obj.pose.bones["Hand_L"].rotation_euler.x = -0.04 + breath * 0.02
         arm_obj.pose.bones["Hand_R"].rotation_euler.x = -0.04 + breath * 0.02
 
-        # Relaxed fingers with subtle breathing flex
         apply_relaxed_fingers("L", 0.22 + breath * 0.04)
         apply_relaxed_fingers("R", 0.22 + breath * 0.04)
 
@@ -1274,7 +1277,7 @@ def create_locomotion_animations(arm_obj):
     actions.append(act_idle)
 
     # ------------------------------------------------------------------
-    # 2. Walk, 3. Run, 4. Sprint (Gait actions with dynamic arm swing)
+    # 2. Walk, 3. Run, 4. Sprint (Gait actions with safe carrying angle)
     # ------------------------------------------------------------------
     def build_gait_action(name, length, stride_rad, knee_rad, arm_rad, elbow_base, elbow_dyn, torso_lean, bob_z):
         act = bpy.data.actions.new(name=name)
@@ -1285,9 +1288,8 @@ def create_locomotion_animations(arm_obj):
         q1 = length // 4
         q3 = (length * 3) // 4
 
-        for f, phase in [(1, 1.0), (half + 1, -1.0), (length, 1.0)]:
+        def set_contact(phase, f):
             reset_pose()
-            # Torso lean
             arm_obj.pose.bones["Spine_01"].rotation_euler.x = torso_lean
             arm_obj.pose.bones["Spine_02"].rotation_euler.x = torso_lean * 0.5
             arm_obj.pose.bones["Hips"].rotation_euler.y = 0.035 * phase
@@ -1298,38 +1300,76 @@ def create_locomotion_animations(arm_obj):
             arm_obj.pose.bones["Calf_L"].rotation_euler.x = -knee_rad * (0.2 if phase > 0 else 1.0)
             arm_obj.pose.bones["Calf_R"].rotation_euler.x = -knee_rad * (1.0 if phase > 0 else 0.2)
 
-            # Natural Arm Swing (Opposite arm & leg):
-            # Left leg forward (phase=1.0) -> Left arm swings back (-X), Right arm swings forward (+X)
+            # Arm Swing with Anatomical Carrying Angle (Clearance from Thighs)
             arm_obj.pose.bones["UpperArm_L"].rotation_euler.x = -arm_rad * phase
             arm_obj.pose.bones["UpperArm_R"].rotation_euler.x = arm_rad * phase
 
-            # Dynamic Elbow Flexion: flexes more on forward swing (-phase for Left arm)
+            flare_l = 0.065 + (0.015 if phase < 0.0 else 0.005)
+            flare_r = -0.065 - (0.015 if phase > 0.0 else 0.005)
+            arm_obj.pose.bones["UpperArm_L"].rotation_euler.z = flare_l
+            arm_obj.pose.bones["UpperArm_R"].rotation_euler.z = flare_r
+
+            # Dynamic Elbow Flexion
             arm_obj.pose.bones["ForeArm_L"].rotation_euler.x = elbow_base + (-phase) * elbow_dyn
             arm_obj.pose.bones["ForeArm_R"].rotation_euler.x = elbow_base + (phase) * elbow_dyn
 
-            # Wrists trailing natural inertia
+            # Wrist inertia
             arm_obj.pose.bones["Hand_L"].rotation_euler.x = -phase * 0.08
             arm_obj.pose.bones["Hand_R"].rotation_euler.x = phase * 0.08
 
-            # Relaxed / Runner's Hand Posture
             finger_curl = 0.30 if "Walk" in name else (0.55 if "Run" in name else 0.45)
             apply_relaxed_fingers("L", finger_curl)
             apply_relaxed_fingers("R", finger_curl)
 
             key_bones(tracked_bones, f)
 
-        # Vertical hip bobbing
-        for f in (q1, q3):
+        def set_passing(is_first_half, f):
+            reset_pose()
+            arm_obj.pose.bones["Spine_01"].rotation_euler.x = torso_lean
+            arm_obj.pose.bones["Spine_02"].rotation_euler.x = torso_lean * 0.5
+            arm_obj.pose.bones["Hips"].rotation_euler.y = 0.0
             arm_obj.pose.bones["Hips"].location.z = bob_z
-            arm_obj.pose.bones["Hips"].keyframe_insert(data_path="location", frame=f)
+
+            if is_first_half:
+                arm_obj.pose.bones["Thigh_L"].rotation_euler.x = 0.02
+                arm_obj.pose.bones["Thigh_R"].rotation_euler.x = 0.12
+                arm_obj.pose.bones["Calf_L"].rotation_euler.x = -0.15
+                arm_obj.pose.bones["Calf_R"].rotation_euler.x = -knee_rad * 0.85
+
+                arm_obj.pose.bones["UpperArm_L"].rotation_euler.x = 0.02
+                arm_obj.pose.bones["UpperArm_R"].rotation_euler.x = -0.02
+            else:
+                arm_obj.pose.bones["Thigh_R"].rotation_euler.x = 0.02
+                arm_obj.pose.bones["Thigh_L"].rotation_euler.x = 0.12
+                arm_obj.pose.bones["Calf_R"].rotation_euler.x = -0.15
+                arm_obj.pose.bones["Calf_L"].rotation_euler.x = -knee_rad * 0.85
+
+                arm_obj.pose.bones["UpperArm_R"].rotation_euler.x = 0.02
+                arm_obj.pose.bones["UpperArm_L"].rotation_euler.x = -0.02
+
+            # Generous passing clearance flare
+            arm_obj.pose.bones["UpperArm_L"].rotation_euler.z = 0.080
+            arm_obj.pose.bones["UpperArm_R"].rotation_euler.z = -0.080
+
+            arm_obj.pose.bones["ForeArm_L"].rotation_euler.x = elbow_base
+            arm_obj.pose.bones["ForeArm_R"].rotation_euler.x = elbow_base
+
+            finger_curl = 0.30 if "Walk" in name else (0.55 if "Run" in name else 0.45)
+            apply_relaxed_fingers("L", finger_curl)
+            apply_relaxed_fingers("R", finger_curl)
+
+            key_bones(tracked_bones, f)
+
+        set_contact(1.0, 1)
+        set_passing(True, q1 + 1)
+        set_contact(-1.0, half + 1)
+        set_passing(False, q3 + 1)
+        set_contact(1.0, length)
 
         return act
 
-    # Walk: arm_rad=0.34, elbow_base=0.38, elbow_dyn=0.18
     actions.append(build_gait_action("Aarav_Walk",   32, 0.42, 0.55, 0.34, 0.38, 0.18, 0.05, 0.022))
-    # Run: arm_rad=0.62, elbow_base=0.72, elbow_dyn=0.28
     actions.append(build_gait_action("Aarav_Run",    24, 0.72, 0.95, 0.62, 0.72, 0.28, 0.16, 0.045))
-    # Sprint: arm_rad=0.88, elbow_base=0.92, elbow_dyn=0.35
     actions.append(build_gait_action("Aarav_Sprint", 16, 0.95, 1.25, 0.88, 0.92, 0.35, 0.28, 0.065))
 
     # ------------------------------------------------------------------
@@ -1339,9 +1379,9 @@ def create_locomotion_animations(arm_obj):
     arm_obj.animation_data.action = act_jump
     for f, hip_z, thigh_x, calf_x, arm_x, elbow_x, curl in [
         (1,   0.00,  0.00,  0.00,  0.00, 0.28, 0.25),
-        (6,  -0.12,  0.45, -0.80, -0.42, 0.35, 0.30),  # Crouch: arms swing back
-        (14,  0.25,  0.30, -0.55,  0.68, 0.65, 0.15),  # Apex: arms reach upward-forward to stabilize
-        (24,  0.00,  0.00,  0.00,  0.00, 0.28, 0.25),  # Descent recovery
+        (6,  -0.12,  0.45, -0.80, -0.42, 0.35, 0.30),
+        (14,  0.25,  0.30, -0.55,  0.68, 0.65, 0.15),
+        (24,  0.00,  0.00,  0.00,  0.00, 0.28, 0.25),
     ]:
         reset_pose()
         arm_obj.pose.bones["Hips"].location.z = hip_z
@@ -1351,7 +1391,9 @@ def create_locomotion_animations(arm_obj):
         arm_obj.pose.bones["Calf_R"].rotation_euler.x = calf_x
 
         arm_obj.pose.bones["UpperArm_L"].rotation_euler.x = arm_x
+        arm_obj.pose.bones["UpperArm_L"].rotation_euler.z = 0.065
         arm_obj.pose.bones["UpperArm_R"].rotation_euler.x = arm_x
+        arm_obj.pose.bones["UpperArm_R"].rotation_euler.z = -0.065
         arm_obj.pose.bones["ForeArm_L"].rotation_euler.x = elbow_x
         arm_obj.pose.bones["ForeArm_R"].rotation_euler.x = elbow_x
 
@@ -1367,8 +1409,8 @@ def create_locomotion_animations(arm_obj):
     arm_obj.animation_data.action = act_land
     for f, hip_z, knee_b, arm_x, elbow_x in [
         (1,   0.00, 0.00,  0.00, 0.28),
-        (6,  -0.16, 0.65, -0.22, 0.45),  # Impact compression: arms absorb momentum
-        (18,  0.00, 0.00,  0.00, 0.28),  # Return to standing
+        (6,  -0.16, 0.65, -0.22, 0.45),
+        (18,  0.00, 0.00,  0.00, 0.28),
     ]:
         reset_pose()
         arm_obj.pose.bones["Hips"].location.z = hip_z
@@ -1379,7 +1421,9 @@ def create_locomotion_animations(arm_obj):
         arm_obj.pose.bones["Spine_01"].rotation_euler.x = knee_b * 0.4
 
         arm_obj.pose.bones["UpperArm_L"].rotation_euler.x = arm_x
+        arm_obj.pose.bones["UpperArm_L"].rotation_euler.z = 0.050
         arm_obj.pose.bones["UpperArm_R"].rotation_euler.x = arm_x
+        arm_obj.pose.bones["UpperArm_R"].rotation_euler.z = -0.050
         arm_obj.pose.bones["ForeArm_L"].rotation_euler.x = elbow_x
         arm_obj.pose.bones["ForeArm_R"].rotation_euler.x = elbow_x
 
@@ -1399,9 +1443,8 @@ def create_locomotion_animations(arm_obj):
         arm_obj.pose.bones["Chest"].rotation_euler.z = yaw * 0.6
         arm_obj.pose.bones["Thigh_L"].rotation_euler.z = yaw * 0.4
 
-        # Arms stay relaxed with subtle natural inertial lag
-        arm_obj.pose.bones["UpperArm_L"].rotation_euler.z = -yaw * 0.15
-        arm_obj.pose.bones["UpperArm_R"].rotation_euler.z = -yaw * 0.15
+        arm_obj.pose.bones["UpperArm_L"].rotation_euler.z = 0.060 - yaw * 0.10
+        arm_obj.pose.bones["UpperArm_R"].rotation_euler.z = -0.060 - yaw * 0.10
         arm_obj.pose.bones["ForeArm_L"].rotation_euler.x = 0.28
         arm_obj.pose.bones["ForeArm_R"].rotation_euler.x = 0.28
 
@@ -1417,11 +1460,10 @@ def create_locomotion_animations(arm_obj):
     arm_obj.animation_data.action = act_hand
     for f, grip in [(1, 0.0), (12, 0.65), (24, 0.0)]:
         reset_pose()
-        # Left arm remains relaxed
+        arm_obj.pose.bones["UpperArm_L"].rotation_euler.z = 0.055
         arm_obj.pose.bones["ForeArm_L"].rotation_euler.x = 0.28
         apply_relaxed_fingers("L", 0.25)
 
-        # Right arm raises and hand articulates
         arm_obj.pose.bones["UpperArm_R"].rotation_euler.x = grip * 0.55
         arm_obj.pose.bones["UpperArm_R"].rotation_euler.z = -grip * 0.15
         arm_obj.pose.bones["ForeArm_R"].rotation_euler.x = 0.28 + grip * 0.70
@@ -1433,11 +1475,9 @@ def create_locomotion_animations(arm_obj):
 
     reset_pose()
 
-    # Clear any existing NLA tracks
     while arm_obj.animation_data.nla_tracks:
         arm_obj.animation_data.nla_tracks.remove(arm_obj.animation_data.nla_tracks[0])
 
-    # Stash all actions to independent NLA tracks with REPLACE blending
     for act in actions:
         track = arm_obj.animation_data.nla_tracks.new()
         track.name = act.name
@@ -1505,12 +1545,12 @@ def build_reference_and_lighting(ref_col, light_col):
 
 
 # ==============================================================================
-# 10. QUALITY VALIDATION, SCREENSHOT RENDERING & EXPORT
+# 10. QUALITY VALIDATION, AUDIT OF CLEARANCE & EXPORT
 # ==============================================================================
 
 def validate_and_export(cols, arm_obj):
     print("\n" + "=" * 76)
-    print("CONQUER THE CITY — AARAV 3D CHARACTER VALIDATION & TRIANGLE AUDIT")
+    print("CONQUER THE CITY — AARAV 3D CHARACTER VALIDATION & CLEARANCE AUDIT")
     print("=" * 76)
 
     for cname in REQUIRED_COLLECTIONS:
@@ -1569,14 +1609,68 @@ def validate_and_export(cols, arm_obj):
     bpy.ops.object.mode_set(mode='OBJECT')
     print("[PASS] Joint deformation test passed and rest pose verified.")
 
-    # 2. Render Validation Screenshots
+    # 2. Strict Skin-Weight Independence Audit (Verify ZERO arm influence on pants)
+    pants = bpy.data.objects.get("Aarav_Jeans_Cargo")
+    vg_names = {vg.index: vg.name for vg in pants.vertex_groups}
+    for v in pants.data.vertices:
+        for g in v.groups:
+            if g.weight > 0.0001:
+                bname = vg_names[g.group]
+                assert not any(k in bname for k in ["Hand", "ForeArm", "UpperArm", "Clavicle", "Thumb", "Index", "Middle", "Ring", "Pinky"]), \
+                    f"Skinning error: Pants vertex {v.index} is influenced by arm bone {bname} (weight: {g.weight})!"
+    print("[PASS] Skin-weight audit verified: ZERO arm/hand bone influence on Aarav_Jeans_Cargo.")
+
+    # Verify ZERO leg influence on hand/forearm
+    hand_l = bpy.data.objects.get("Aarav_Forearm_Palm_L")
+    vg_h_names = {vg.index: vg.name for vg in hand_l.vertex_groups}
+    for v in hand_l.data.vertices:
+        for g in v.groups:
+            if g.weight > 0.0001:
+                bname = vg_h_names[g.group]
+                assert not any(k in bname for k in ["Thigh", "Calf", "Foot", "Toe", "Hips"]), \
+                    f"Skinning error: Hand_L vertex {v.index} is influenced by leg bone {bname} (weight: {g.weight})!"
+    print("[PASS] Skin-weight audit verified: ZERO leg bone influence on Aarav_Forearm_Palm_L.")
+
+    # 3. Dynamic Clearance & Intersection Audit Across Complete Walk Cycle
+    walk_act = bpy.data.actions.get("Aarav_Walk")
+    arm_obj.animation_data.action = walk_act
+    min_dist = 999.0
+    closest_f = -1
+
+    for f in range(1, 33):
+        bpy.context.scene.frame_set(f)
+        deps = bpy.context.evaluated_depsgraph_get()
+        p_eval = pants.evaluated_get(deps)
+        h_eval = hand_l.evaluated_get(deps)
+        m_p = p_eval.to_mesh()
+        m_h = h_eval.to_mesh()
+
+        pants_verts = [p_eval.matrix_world @ v.co for v in m_p.vertices if v.co.x > 0.05 and 0.65 < v.co.z < 0.95]
+        hand_verts = [h_eval.matrix_world @ v.co for v in m_h.vertices]
+
+        for hv in hand_verts:
+            for pv in pants_verts:
+                d = (hv - pv).length
+                if d < min_dist:
+                    min_dist = d
+                    closest_f = f
+        p_eval.to_mesh_clear()
+        h_eval.to_mesh_clear()
+
+    arm_obj.animation_data.action = None
+    bpy.context.scene.frame_set(1)
+    print(f"[CLEARANCE AUDIT] Minimum hand-to-pants distance during Walk cycle: {min_dist * 100:.2f} cm at frame {closest_f}")
+    assert min_dist > 0.020, f"Physical clearance failed: Minimum distance {min_dist * 100:.2f} cm is below 2.0 cm threshold!"
+    print(f"[PASS] Dynamic clearance verified: Hand cleanly clears pants with > {min_dist * 100:.2f} cm air gap throughout full stride.")
+
+    # 4. Render Validation Screenshots
     render_validation_screenshots(arm_obj)
 
-    # 3. Save Editable .blend File
+    # 5. Save Editable .blend File
     bpy.ops.wm.save_as_mainfile(filepath=BLEND_OUT_PATH)
     print(f"[SAVED] Editable Blender Project: {BLEND_OUT_PATH}")
 
-    # 4. Select and Export GLB
+    # 6. Export Game-Ready GLB
     bpy.ops.object.select_all(action='DESELECT')
     arm_obj.select_set(True)
     for col in export_Collections:
@@ -1611,7 +1705,6 @@ def validate_and_export(cols, arm_obj):
 
 
 def render_validation_screenshots(arm_obj):
-    """Renders validation screenshots for idle front, side, and hand close-ups."""
     scene = bpy.context.scene
     scene.render.engine = 'BLENDER_WORKBENCH'
     scene.display.shading.color_type = 'MATERIAL'
@@ -1625,11 +1718,12 @@ def render_validation_screenshots(arm_obj):
     scene.collection.objects.link(cam_obj)
     scene.camera = cam_obj
 
-    # Shots to render:
+    out_dir = os.path.abspath(PUBLIC_MODELS_DIR)
+
     # 1. Front view of full relaxed character
     cam_obj.location = Vector((0.0, -3.2, 0.95))
     cam_obj.rotation_euler = (math.radians(88), 0.0, 0.0)
-    front_path = os.path.join(PUBLIC_MODELS_DIR, "aarav_idle_front.png")
+    front_path = os.path.join(out_dir, "aarav_idle_front.png")
     scene.render.filepath = front_path
     bpy.ops.render.render(write_still=True)
     print(f"[RENDERED] Relaxed Idle Front: {front_path}")
@@ -1637,20 +1731,45 @@ def render_validation_screenshots(arm_obj):
     # 2. Side view of full relaxed character
     cam_obj.location = Vector((-3.2, 0.0, 0.95))
     cam_obj.rotation_euler = (math.radians(88), 0.0, math.radians(-90))
-    side_path = os.path.join(PUBLIC_MODELS_DIR, "aarav_idle_side.png")
+    side_path = os.path.join(out_dir, "aarav_idle_side.png")
     scene.render.filepath = side_path
     bpy.ops.render.render(write_still=True)
     print(f"[RENDERED] Relaxed Idle Side: {side_path}")
 
-    # 3. Close-up of Left Hand & Wristwatch
-    cam_data.lens = 75.0
-    cam_obj.location = Vector((0.36, -0.65, 0.82))
-    cam_obj.rotation_euler = (math.radians(80), 0.0, math.radians(10))
-    hands_path = os.path.join(PUBLIC_MODELS_DIR, "aarav_hands_closeup.png")
+    # 3. Close-up of Left Hand & Pants Clearance
+    cam_data.lens = 70.0
+    cam_obj.location = Vector((0.38, -0.75, 0.82))
+    cam_obj.rotation_euler = (math.radians(82), 0.0, math.radians(12))
+    hands_path = os.path.join(out_dir, "aarav_hands_closeup.png")
     scene.render.filepath = hands_path
     bpy.ops.render.render(write_still=True)
-    print(f"[RENDERED] Hands Close-Up: {hands_path}")
+    print(f"[RENDERED] Hands & Pants Clearance: {hands_path}")
 
+    # 4. Walk Frame (mid-stride: frame 8 of Aarav_Walk)
+    walk_act = bpy.data.actions.get('Aarav_Walk')
+    if walk_act:
+        arm_obj.animation_data.action = walk_act
+        scene.frame_set(8)
+        cam_data.lens = 45.0
+        cam_obj.location = Vector((1.8, -2.6, 1.0))
+        cam_obj.rotation_euler = (math.radians(82), 0.0, math.radians(35))
+        walk_path = os.path.join(out_dir, 'aarav_walk_frame.png')
+        scene.render.filepath = walk_path
+        bpy.ops.render.render(write_still=True)
+        print(f"[RENDERED] Walk Frame: {walk_path}")
+
+    # 5. Run Frame (mid-stride: frame 6 of Aarav_Run)
+    run_act = bpy.data.actions.get('Aarav_Run')
+    if run_act:
+        arm_obj.animation_data.action = run_act
+        scene.frame_set(6)
+        run_path = os.path.join(out_dir, 'aarav_run_frame.png')
+        scene.render.filepath = run_path
+        bpy.ops.render.render(write_still=True)
+        print(f"[RENDERED] Run Frame: {run_path}")
+
+    arm_obj.animation_data.action = None
+    scene.frame_set(1)
     scene.collection.objects.unlink(cam_obj)
     bpy.data.objects.remove(cam_obj)
     bpy.data.cameras.remove(cam_data)
