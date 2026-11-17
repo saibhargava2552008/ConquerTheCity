@@ -1,7 +1,7 @@
 import * as THREE from 'three'
 import { Entity } from './Entity'
 import type { MovementState } from '../core/Types'
-import { damp } from '../physics/MathUtils'
+import { damp, clamp } from '../physics/MathUtils'
 
 export class Player extends Entity {
   // Visual limbs and parts for procedural animation
@@ -156,8 +156,8 @@ export class Player extends Entity {
     // Smoothly rotate the character model to face movement direction
     this.modelRoot.rotation.y = facingAngle
 
-    // Subtle banking/tilt into turns
-    const targetTilt = turnRate * 0.15
+    // Subtle banking/tilt into turns with bounded limit
+    const targetTilt = clamp(turnRate * 0.08, -0.2, 0.2)
     this.currentTilt = damp(this.currentTilt, targetTilt, 8, dt)
     this.modelRoot.rotation.z = this.currentTilt
 

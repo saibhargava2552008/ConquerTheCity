@@ -59,8 +59,9 @@ export class CollisionSystem {
   }
 
   /**
-   * Resolves horizontal motion with sliding along walls.
-   * Modifies position and velocity in-place.
+   * Resolves horizontal motion with clean axis-wise separation.
+   * Ensures seamless wall sliding, eliminates jitter/freezing at corners,
+   * preserves step-up curbs, and prevents penetration through solid obstacles.
    */
   public resolveHorizontalMovement(
     position: THREE.Vector3,
@@ -71,35 +72,51 @@ export class CollisionSystem {
   ): void {
     const halfWidth = radius
     const stepHeight = 0.45
+    const skin = 0.002 // 2mm buffer to prevent numerical contact flutter
+
+    const startX = position.x
+    const startZ = position.z
+    const footY = position.y
+    const headY = position.y + height
 
     // 1. Resolve X movement
     if (Math.abs(velocity.x) > 0.0001) {
-      const nextX = position.x + velocity.x * dt
-
-      // Construct proposed player AABB for X movement
-      _box1.min.set(nextX - halfWidth, position.y + stepHeight, position.z - halfWidth)
-      _box1.max.set(nextX + halfWidth, position.y + height, position.z + halfWidth)
-
+      const targetX = startX + velocity.x * dt
+      let resolvedX = targetX
       let collidedX = false
-      let resolvedX = nextX
 
       for (let i = 0; i < this.colliders.length; i++) {
         const box = this.colliders[i].box
 
-        // Skip obstacles whose top is below the step-up height
-        if (box.max.y <= position.y + stepHeight) continue
+        // Skip obstacles step-up can handle or that are overhead
+        if (box.max.y <= footY + stepHeight || box.min.y >= headY) continue
 
-        // Quick AABB intersection test
-        if (_box1.intersectsBox(box)) {
-          collidedX = true
-          if (velocity.x > 0) {
-            // Moving positive X -> snap to box min X minus halfWidth
-            const allowed = box.min.x - halfWidth - 0.001
-            resolvedX = Math.min(resolvedX, allowed)
-          } else {
-            // Moving negative X -> snap to box max X plus halfWidth
-            const allowed = box.max.x + halfWidth + 0.001
-            resolvedX = Math.max(resolvedX, allowed)
+        // Check if player overlaps the collider along Z
+        const overlapsZ =
+          startZ + halfWidth - skin > box.min.z && startZ - halfWidth + skin < box.max.z
+        if (!overlapsZ) continue
+
+        if (velocity.x > 0) {
+          // Moving positive X (East) -> can only collide with West face (box.min.x)
+          const wasOutside = startX + halfWidth <= box.min.x + 0.05
+          const willEnter = targetX + halfWidth > box.min.x
+          if (wasOutside && willEnter) {
+            const allowed = box.min.x - halfWidth - skin
+            if (!collidedX || allowed < resolvedX) {
+              resolvedX = allowed
+              collidedX = true
+            }
+          }
+        } else {
+          // Moving negative X (West) -> can only collide with East face (box.max.x)
+          const wasOutside = startX - halfWidth >= box.max.x - 0.05
+          const willEnter = targetX - halfWidth < box.max.x
+          if (wasOutside && willEnter) {
+            const allowed = box.max.x + halfWidth + skin
+            if (!collidedX || allowed > resolvedX) {
+              resolvedX = allowed
+              collidedX = true
+            }
           }
         }
       }
@@ -108,36 +125,48 @@ export class CollisionSystem {
         position.x = resolvedX
         velocity.x = 0
       } else {
-        position.x = nextX
+        position.x = targetX
       }
     }
 
-    // 2. Resolve Z movement
+    // 2. Resolve Z movement (using updated position.x)
     if (Math.abs(velocity.z) > 0.0001) {
-      const nextZ = position.z + velocity.z * dt
-
-      // Construct proposed player AABB for Z movement
-      _box1.min.set(position.x - halfWidth, position.y + stepHeight, nextZ - halfWidth)
-      _box1.max.set(position.x + halfWidth, position.y + height, nextZ + halfWidth)
-
+      const targetZ = startZ + velocity.z * dt
+      let resolvedZ = targetZ
       let collidedZ = false
-      let resolvedZ = nextZ
 
       for (let i = 0; i < this.colliders.length; i++) {
         const box = this.colliders[i].box
 
-        if (box.max.y <= position.y + stepHeight) continue
+        // Skip obstacles step-up can handle or that are overhead
+        if (box.max.y <= footY + stepHeight || box.min.y >= headY) continue
 
-        if (_box1.intersectsBox(box)) {
-          collidedZ = true
-          if (velocity.z > 0) {
-            // Moving positive Z -> snap to box min Z minus halfWidth
-            const allowed = box.min.z - halfWidth - 0.001
-            resolvedZ = Math.min(resolvedZ, allowed)
-          } else {
-            // Moving negative Z -> snap to box max Z plus halfWidth
-            const allowed = box.max.z + halfWidth + 0.001
-            resolvedZ = Math.max(resolvedZ, allowed)
+        // Check if player overlaps the collider along X
+        const overlapsX =
+          position.x + halfWidth - skin > box.min.x && position.x - halfWidth + skin < box.max.x
+        if (!overlapsX) continue
+
+        if (velocity.z > 0) {
+          // Moving positive Z (South) -> can only collide with North face (box.min.z)
+          const wasOutside = startZ + halfWidth <= box.min.z + 0.05
+          const willEnter = targetZ + halfWidth > box.min.z
+          if (wasOutside && willEnter) {
+            const allowed = box.min.z - halfWidth - skin
+            if (!collidedZ || allowed < resolvedZ) {
+              resolvedZ = allowed
+              collidedZ = true
+            }
+          }
+        } else {
+          // Moving negative Z (North) -> can only collide with South face (box.max.z)
+          const wasOutside = startZ - halfWidth >= box.max.z - 0.05
+          const willEnter = targetZ - halfWidth < box.max.z
+          if (wasOutside && willEnter) {
+            const allowed = box.max.z + halfWidth + skin
+            if (!collidedZ || allowed > resolvedZ) {
+              resolvedZ = allowed
+              collidedZ = true
+            }
           }
         }
       }
@@ -146,12 +175,48 @@ export class CollisionSystem {
         position.z = resolvedZ
         velocity.z = 0
       } else {
-        position.z = nextZ
+        position.z = targetZ
       }
     }
 
-    // Keep player within city bounds
-    const worldLimit = 58
+    // 3. De-penetration safety pass
+    // If player is slightly embedded inside an obstacle, push out along shortest axis
+    for (let i = 0; i < this.colliders.length; i++) {
+      const box = this.colliders[i].box
+      if (box.max.y <= footY + stepHeight || box.min.y >= headY) continue
+
+      const pMinX = position.x - halfWidth
+      const pMaxX = position.x + halfWidth
+      const pMinZ = position.z - halfWidth
+      const pMaxZ = position.z + halfWidth
+
+      // Check full AABB intersection
+      if (pMaxX > box.min.x && pMinX < box.max.x && pMaxZ > box.min.z && pMinZ < box.max.z) {
+        const penLeft = pMaxX - box.min.x
+        const penRight = box.max.x - pMinX
+        const penTop = pMaxZ - box.min.z
+        const penBottom = box.max.z - pMinZ
+
+        const minPen = Math.min(penLeft, penRight, penTop, penBottom)
+
+        if (minPen === penLeft) {
+          position.x = box.min.x - halfWidth - skin
+          velocity.x = Math.min(0, velocity.x)
+        } else if (minPen === penRight) {
+          position.x = box.max.x + halfWidth + skin
+          velocity.x = Math.max(0, velocity.x)
+        } else if (minPen === penTop) {
+          position.z = box.min.z - halfWidth - skin
+          velocity.z = Math.min(0, velocity.z)
+        } else {
+          position.z = box.max.z + halfWidth + skin
+          velocity.z = Math.max(0, velocity.z)
+        }
+      }
+    }
+
+    // 4. World bounds safety clamping
+    const worldLimit = 56.5
     position.x = clamp(position.x, -worldLimit, worldLimit)
     position.z = clamp(position.z, -worldLimit, worldLimit)
   }

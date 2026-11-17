@@ -24,6 +24,8 @@ export class InputManager {
   private boundOnPointerLockChange: () => void
   private boundOnPointerLockError: (e: Event) => void
   private boundOnClick: () => void
+  private boundOnBlur: () => void
+  private boundOnVisibilityChange: () => void
 
   constructor(domElement: HTMLElement, onLockStateChange?: (locked: boolean) => void) {
     this.domElement = domElement
@@ -36,18 +38,52 @@ export class InputManager {
     this.boundOnPointerLockChange = this.onPointerLockChange.bind(this)
     this.boundOnPointerLockError = this.onPointerLockError.bind(this)
     this.boundOnClick = this.onClick.bind(this)
+    this.boundOnBlur = this.onBlur.bind(this)
+    this.boundOnVisibilityChange = this.onVisibilityChange.bind(this)
 
     this.attachListeners()
   }
 
   private attachListeners(): void {
-    window.addEventListener('keydown', this.boundOnKeyDown)
-    window.addEventListener('keyup', this.boundOnKeyUp)
-    window.addEventListener('mousemove', this.boundOnMouseMove)
-    window.addEventListener('wheel', this.boundOnWheel, { passive: true })
-    document.addEventListener('pointerlockchange', this.boundOnPointerLockChange)
-    document.addEventListener('pointerlockerror', this.boundOnPointerLockError)
-    this.domElement.addEventListener('click', this.boundOnClick)
+    if (typeof window !== 'undefined') {
+      window.addEventListener('keydown', this.boundOnKeyDown)
+      window.addEventListener('keyup', this.boundOnKeyUp)
+      window.addEventListener('mousemove', this.boundOnMouseMove)
+      window.addEventListener('wheel', this.boundOnWheel, { passive: true })
+      window.addEventListener('blur', this.boundOnBlur)
+    }
+    if (typeof document !== 'undefined') {
+      document.addEventListener('visibilitychange', this.boundOnVisibilityChange)
+      document.addEventListener('pointerlockchange', this.boundOnPointerLockChange)
+      document.addEventListener('pointerlockerror', this.boundOnPointerLockError)
+    }
+    this.domElement.addEventListener?.('click', this.boundOnClick)
+  }
+
+  /**
+   * Resets all held keyboard states and input deltas.
+   * Prevents stuck movement/sprint/jump inputs when window blurs or visibility changes.
+   */
+  public resetHeldKeys(): void {
+    this.state.forward = false
+    this.state.backward = false
+    this.state.left = false
+    this.state.right = false
+    this.state.jump = false
+    this.state.sprint = false
+    this.state.movementX = 0
+    this.state.movementY = 0
+    this.state.scrollDelta = 0
+  }
+
+  private onBlur(): void {
+    this.resetHeldKeys()
+  }
+
+  private onVisibilityChange(): void {
+    if (document.hidden) {
+      this.resetHeldKeys()
+    }
   }
 
   private onClick(): void {
@@ -72,18 +108,26 @@ export class InputManager {
 
   private onPointerLockChange(): void {
     this.isLocked = document.pointerLockElement === this.domElement
+    if (!this.isLocked) {
+      // Clear held inputs when pointer lock is released to avoid lingering movement
+      this.resetHeldKeys()
+    }
     this.onLockStateChange?.(this.isLocked)
   }
 
   private onPointerLockError(e: Event): void {
     console.warn('Pointer lock error:', e)
     this.isLocked = false
+    this.resetHeldKeys()
     this.onLockStateChange?.(false)
   }
 
   private onKeyDown(e: KeyboardEvent): void {
     // Avoid interfering with browser shortcuts if Alt/Meta are pressed
-    if (e.altKey || e.metaKey) return
+    if (e.altKey || e.metaKey) {
+      this.resetHeldKeys()
+      return
+    }
 
     switch (e.code) {
       case 'KeyW':
@@ -184,13 +228,19 @@ export class InputManager {
   }
 
   public dispose(): void {
-    window.removeEventListener('keydown', this.boundOnKeyDown)
-    window.removeEventListener('keyup', this.boundOnKeyUp)
-    window.removeEventListener('mousemove', this.boundOnMouseMove)
-    window.removeEventListener('wheel', this.boundOnWheel)
-    document.removeEventListener('pointerlockchange', this.boundOnPointerLockChange)
-    document.removeEventListener('pointerlockerror', this.boundOnPointerLockError)
-    this.domElement.removeEventListener('click', this.boundOnClick)
+    if (typeof window !== 'undefined') {
+      window.removeEventListener('keydown', this.boundOnKeyDown)
+      window.removeEventListener('keyup', this.boundOnKeyUp)
+      window.removeEventListener('mousemove', this.boundOnMouseMove)
+      window.removeEventListener('wheel', this.boundOnWheel)
+      window.removeEventListener('blur', this.boundOnBlur)
+    }
+    if (typeof document !== 'undefined') {
+      document.removeEventListener('visibilitychange', this.boundOnVisibilityChange)
+      document.removeEventListener('pointerlockchange', this.boundOnPointerLockChange)
+      document.removeEventListener('pointerlockerror', this.boundOnPointerLockError)
+    }
+    this.domElement.removeEventListener?.('click', this.boundOnClick)
 
     if (this.isLocked) {
       this.exitPointerLock()

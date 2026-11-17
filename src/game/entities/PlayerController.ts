@@ -2,7 +2,7 @@ import * as THREE from 'three'
 import { Player } from './Player'
 import { CollisionSystem } from '../physics/CollisionSystem'
 import type { InputState, MovementState, PlayerStats } from '../core/Types'
-import { damp, dampAngle } from '../physics/MathUtils'
+import { damp, dampAngle, clamp } from '../physics/MathUtils'
 
 export class PlayerController {
   private player: Player
@@ -16,7 +16,7 @@ export class PlayerController {
   private lastFacingAngle = 0
   private turnRate = 0
 
-  // Movement tuning
+  // Movement tuning (preserved M0 baseline speeds)
   public walkSpeed = 5.5 // m/s
   public sprintSpeed = 10.5 // m/s
   public groundAcceleration = 32 // m/s^2
@@ -86,25 +86,31 @@ export class PlayerController {
       inputX /= len
       inputZ /= len
 
-      // Rotate direction vector by camera yaw
-      // In Three.js: forward with yaw 0 is -Z, right is +X
+      // Rotate direction vector by camera yaw:
+      // Camera Forward = (-sinYaw, 0, -cosYaw)
+      // Camera Right   = (cosYaw, 0, -sinYaw)
+      // With W moving along +Forward (-inputZ) and D moving along +Right (+inputX):
       const sinYaw = Math.sin(cameraYaw)
       const cosYaw = Math.cos(cameraYaw)
 
-      this._moveDir.x = inputX * cosYaw - inputZ * sinYaw
-      this._moveDir.z = inputX * sinYaw + inputZ * cosYaw
+      this._moveDir.x = inputX * cosYaw + inputZ * sinYaw
+      this._moveDir.z = -inputX * sinYaw + inputZ * cosYaw
     }
 
-    // 3. Horizontal Acceleration & Deceleration
+    // 3. Horizontal Acceleration & Deceleration with Reversal Braking
     this._targetVel.copy(this._moveDir).multiplyScalar(targetMaxSpeed)
 
     const accelRate = this.isGrounded ? this.groundAcceleration : this.airAcceleration
     const decelRate = this.isGrounded ? this.groundDeceleration : this.airDrag
 
     if (hasInput) {
+      // Check if desired direction opposes current velocity (reversal / sharp turnaround)
+      const dot = this.velocity.x * this._targetVel.x + this.velocity.z * this._targetVel.z
+      const effectiveAccel = dot < 0 ? accelRate * 1.6 : accelRate
+
       // Accelerate towards target velocity
-      this.velocity.x = damp(this.velocity.x, this._targetVel.x, accelRate, delta)
-      this.velocity.z = damp(this.velocity.z, this._targetVel.z, accelRate, delta)
+      this.velocity.x = damp(this.velocity.x, this._targetVel.x, effectiveAccel, delta)
+      this.velocity.z = damp(this.velocity.z, this._targetVel.z, effectiveAccel, delta)
     } else {
       // Decelerate smoothly to halt
       this.velocity.x = damp(this.velocity.x, 0, decelRate, delta)
@@ -181,7 +187,7 @@ export class PlayerController {
       }
     }
 
-    // 8. Player Orientation / Facing Angle
+    // 8. Player Orientation / Facing Angle with Shortest Angular Difference
     const horizontalSpeed = Math.hypot(this.velocity.x, this.velocity.z)
 
     if (horizontalSpeed > 0.4) {
@@ -190,8 +196,11 @@ export class PlayerController {
       this.facingAngle = dampAngle(this.facingAngle, targetFacing, 18, delta)
     }
 
-    // Calculate turning rate for body roll/tilt
-    this.turnRate = (this.facingAngle - this.lastFacingAngle) / delta
+    // Calculate turning rate using shortest angular difference across -PI/PI boundary
+    const angleDiff =
+      ((this.facingAngle - this.lastFacingAngle + Math.PI * 3) % (Math.PI * 2)) - Math.PI
+    const rawTurnRate = angleDiff / Math.max(delta, 0.0001)
+    this.turnRate = damp(this.turnRate, clamp(rawTurnRate, -12, 12), 12, delta)
     this.lastFacingAngle = this.facingAngle
 
     // 9. Determine Movement State
