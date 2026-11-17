@@ -1,6 +1,7 @@
 import * as THREE from 'three'
 import type { MaterialFactory } from '../MaterialFactory'
 import type { CollisionSystem } from '../../physics/CollisionSystem'
+import { AssetLoader } from '../AssetLoader'
 
 /**
  * Reusable helper utilities for procedural Indian coastal architecture and props
@@ -135,6 +136,10 @@ export class DistrictHelper {
     const palmGroup = new THREE.Group()
     palmGroup.position.set(x, 0, z)
 
+    // Fallback procedural palm mesh group (for headless test environments)
+    const proceduralGroup = new THREE.Group()
+    palmGroup.add(proceduralGroup)
+
     const trunkMat = materials.getPalmTrunkMaterial()
     const leafMat = materials.getPalmLeafMaterial()
     const coconutMat = materials.getColorMaterial(0x5c4033, 0.9, 0.0)
@@ -156,7 +161,7 @@ export class DistrictHelper {
       seg.rotation.z = -Math.sin(leanDir) * leanAngle * (0.8 + s * 0.2)
       seg.rotation.x = Math.cos(leanDir) * leanAngle * (0.8 + s * 0.2)
       seg.castShadow = true
-      palmGroup.add(seg)
+      proceduralGroup.add(seg)
 
       curX += dx
       curZ += dz
@@ -187,7 +192,23 @@ export class DistrictHelper {
       crown.add(nut)
     }
 
-    palmGroup.add(crown)
+    proceduralGroup.add(crown)
+
+    // Mount high-fidelity 3D GLB Coconut Palm asset
+    const scaleFactor = height / 8.5
+    AssetLoader.getInstance().instantiate(
+      'tree_coconut_palm',
+      palmGroup,
+      0,
+      0,
+      0,
+      leanDir,
+      scaleFactor,
+      () => {
+        proceduralGroup.visible = false
+      }
+    )
+
     parent.add(palmGroup)
 
     // Base trunk collider
@@ -223,6 +244,9 @@ export class DistrictHelper {
     else if (facing === 'W') rotY = -Math.PI / 2
     houseGroup.rotation.y = rotY
 
+    const proceduralGroup = new THREE.Group()
+    houseGroup.add(proceduralGroup)
+
     const stuccoMat = materials.getStuccoMaterial(wallColor, '#802604')
     const roofMat = materials.getTerracottaRoofMaterial()
     const timberMat = materials.getTimberWoodMaterial()
@@ -234,7 +258,7 @@ export class DistrictHelper {
     body.position.set(0, wallHeight / 2, 0)
     body.castShadow = true
     body.receiveShadow = true
-    houseGroup.add(body)
+    proceduralGroup.add(body)
 
     // Register solid collider for main house body ONLY (does not block veranda)
     const isEW = facing === 'E' || facing === 'W'
@@ -259,7 +283,7 @@ export class DistrictHelper {
     roofMesh.position.set(0, wallHeight + roofH / 2, 0)
     roofMesh.rotation.y = Math.PI / 4
     roofMesh.castShadow = true
-    houseGroup.add(roofMesh)
+    proceduralGroup.add(roofMesh)
 
     // 3. Front Veranda / Porch (Walkable plinth at height 0.35m)
     if (hasVeranda) {
@@ -272,7 +296,7 @@ export class DistrictHelper {
       plinth.scale.set(width, 0.35, verandaDepth)
       plinth.position.set(0, 0.175, verandaZ)
       plinth.receiveShadow = true
-      houseGroup.add(plinth)
+      proceduralGroup.add(plinth)
 
       // Calculate world coordinates for veranda collider based on facing direction
       let verColX = x
@@ -311,7 +335,7 @@ export class DistrictHelper {
       verandaRoof.position.set(0, wallHeight * 0.78, verandaZ)
       verandaRoof.rotation.x = 0.15
       verandaRoof.castShadow = true
-      houseGroup.add(verandaRoof)
+      proceduralGroup.add(verandaRoof)
 
       // Veranda timber pillars
       const numPillars = 4
@@ -322,7 +346,7 @@ export class DistrictHelper {
         pillar.scale.set(0.14, wallHeight * 0.75, 0.14)
         pillar.position.set(px, (wallHeight * 0.75) / 2 + 0.3, depth / 2 + verandaDepth - 0.2)
         pillar.castShadow = true
-        houseGroup.add(pillar)
+        proceduralGroup.add(pillar)
 
         // World coordinates of pillar
         let pilX = x
@@ -357,7 +381,7 @@ export class DistrictHelper {
       const door = new THREE.Mesh(materials.boxGeometry, darkWoodMat)
       door.scale.set(1.4, 2.4, 0.1)
       door.position.set(0, 1.2, depth / 2 + 0.05)
-      houseGroup.add(door)
+      proceduralGroup.add(door)
     }
 
     // Windows with painted wooden shutters
@@ -368,18 +392,43 @@ export class DistrictHelper {
       const win = new THREE.Mesh(materials.boxGeometry, winMat)
       win.scale.set(1.4, 1.5, 0.1)
       win.position.set(wx, 2.2, depth / 2 + 0.05)
-      houseGroup.add(win)
+      proceduralGroup.add(win)
 
       const shutL = new THREE.Mesh(materials.boxGeometry, shutterMat)
       shutL.scale.set(0.4, 1.5, 0.08)
       shutL.position.set(wx - 0.9, 2.2, depth / 2 + 0.08)
-      houseGroup.add(shutL)
+      proceduralGroup.add(shutL)
 
       const shutR = new THREE.Mesh(materials.boxGeometry, shutterMat)
       shutR.scale.set(0.4, 1.5, 0.08)
       shutR.position.set(wx + 0.9, 2.2, depth / 2 + 0.08)
-      houseGroup.add(shutR)
+      proceduralGroup.add(shutR)
     }
+
+    // Mount high-fidelity 3D GLB Architecture Asset (Commercial Arcade or Heritage Villa)
+    const isCommercial =
+      name.toLowerCase().includes('arcade') ||
+      name.toLowerCase().includes('shop') ||
+      name.toLowerCase().includes('store') ||
+      name.toLowerCase().includes('spice') ||
+      name.toLowerCase().includes('bakery') ||
+      name.toLowerCase().includes('chai')
+
+    const assetId = isCommercial ? 'building_coastal_arcade' : 'building_heritage_villa'
+    const targetScale = isCommercial ? width / 12.0 : width / 14.0
+
+    AssetLoader.getInstance().instantiate(
+      assetId,
+      houseGroup,
+      0,
+      0,
+      0,
+      0,
+      targetScale,
+      () => {
+        proceduralGroup.visible = false
+      }
+    )
 
     parent.add(houseGroup)
   }
@@ -403,6 +452,9 @@ export class DistrictHelper {
     boatGroup.position.set(x, y, z)
     boatGroup.rotation.y = rotY
 
+    const proceduralGroup = new THREE.Group()
+    boatGroup.add(proceduralGroup)
+
     const hullMat = materials.getBoatHullMaterial(hullColor, stripeColor)
     const woodMat = materials.getTimberWoodMaterial()
     const mastMat = materials.getColorMaterial(0x4a3b32, 0.8, 0.1)
@@ -416,7 +468,7 @@ export class DistrictHelper {
     hull.scale.set(width, height, length)
     hull.position.set(0, height / 2, 0)
     hull.castShadow = true
-    boatGroup.add(hull)
+    proceduralGroup.add(hull)
 
     // Pointed Bow
     const bow = new THREE.Mesh(materials.coneGeometry, hullMat)
@@ -424,7 +476,7 @@ export class DistrictHelper {
     bow.position.set(0, height / 2 + 0.1, length / 2 + 1.0)
     bow.rotation.x = Math.PI / 2
     bow.castShadow = true
-    boatGroup.add(bow)
+    proceduralGroup.add(bow)
 
     // Pointed Stern
     const stern = new THREE.Mesh(materials.coneGeometry, hullMat)
@@ -432,35 +484,49 @@ export class DistrictHelper {
     stern.position.set(0, height / 2 + 0.1, -length / 2 - 0.8)
     stern.rotation.x = -Math.PI / 2
     stern.castShadow = true
-    boatGroup.add(stern)
+    proceduralGroup.add(stern)
 
     // Walkable Wooden Deck Floor
     const deck = new THREE.Mesh(materials.boxGeometry, woodMat)
     deck.scale.set(width - 0.3, 0.15, length - 0.4)
     deck.position.set(0, height - 0.1, 0)
     deck.receiveShadow = true
-    boatGroup.add(deck)
+    proceduralGroup.add(deck)
 
     // Small Wheelhouse / Shelter Cabin
     const cabin = new THREE.Mesh(materials.boxGeometry, woodMat)
     cabin.scale.set(1.6, 1.4, 2.2)
     cabin.position.set(0, height + 0.7, -1.2)
     cabin.castShadow = true
-    boatGroup.add(cabin)
+    proceduralGroup.add(cabin)
 
     // Mast
     const mast = new THREE.Mesh(materials.cylinderGeometry, mastMat)
     mast.scale.set(0.08, 4.2, 0.08)
     mast.position.set(0, height + 2.1, 1.2)
     mast.castShadow = true
-    boatGroup.add(mast)
+    proceduralGroup.add(mast)
 
     // Folded Fishing Net Prop on deck
     const netMat = materials.getColorMaterial(0x2d6a4f, 0.95, 0.0)
     const net = new THREE.Mesh(materials.sphereGeometry, netMat)
     net.scale.set(0.6, 0.35, 0.8)
     net.position.set(0.4, height + 0.15, 2.5)
-    boatGroup.add(net)
+    proceduralGroup.add(net)
+
+    // Mount high-fidelity 3D GLB Coastal Fishing Boat (Dhoni) asset
+    AssetLoader.getInstance().instantiate(
+      'prop_coastal_boat',
+      boatGroup,
+      0,
+      0,
+      0,
+      0,
+      1.0,
+      () => {
+        proceduralGroup.visible = false
+      }
+    )
 
     parent.add(boatGroup)
 
@@ -578,7 +644,7 @@ export class DistrictHelper {
   }
 
   /**
-   * Coastal Street Lamp with warm nocturnal luminaire
+   * Coastal Street Lamp with Victorian cast-iron marine luminaire
    */
   public static addStreetLamp(
     parent: THREE.Group,
@@ -592,6 +658,9 @@ export class DistrictHelper {
     const lampGroup = new THREE.Group()
     lampGroup.position.set(x, 0, z)
 
+    const proceduralGroup = new THREE.Group()
+    lampGroup.add(proceduralGroup)
+
     const metalMat = materials.getColorMaterial(0x2f3640, 0.5, 0.6)
     const glowMat = new THREE.MeshStandardMaterial({
       color: 0xfffaed,
@@ -604,25 +673,144 @@ export class DistrictHelper {
     pole.scale.set(0.12, height, 0.12)
     pole.position.set(0, height / 2, 0)
     pole.castShadow = true
-    lampGroup.add(pole)
+    proceduralGroup.add(pole)
 
     const base = new THREE.Mesh(materials.cylinderGeometry, metalMat)
     base.scale.set(0.3, 0.6, 0.3)
     base.position.set(0, 0.3, 0)
-    lampGroup.add(base)
+    proceduralGroup.add(base)
 
     const arm = new THREE.Mesh(materials.boxGeometry, metalMat)
     arm.scale.set(0.8, 0.08, 0.08)
     arm.position.set(0.35, height - 0.1, 0)
-    lampGroup.add(arm)
+    proceduralGroup.add(arm)
 
     const lantern = new THREE.Mesh(materials.sphereGeometry, glowMat)
     lantern.scale.set(0.24, 0.32, 0.24)
     lantern.position.set(0.7, height - 0.28, 0)
-    lampGroup.add(lantern)
+    proceduralGroup.add(lantern)
+
+    // Mount high-fidelity 3D GLB Victorian Coastal Streetlamp
+    const scaleFactor = height / 5.4
+    AssetLoader.getInstance().instantiate(
+      'prop_coastal_streetlamp',
+      lampGroup,
+      0,
+      0,
+      0,
+      0,
+      scaleFactor,
+      () => {
+        proceduralGroup.visible = false
+      }
+    )
 
     parent.add(lampGroup)
 
     this.registerBoxCollider(collisionSystem, x, height / 2, z, 0.4, height, 0.4, name)
+  }
+
+  /**
+   * Adds an iconic Indian Bajaj-style Auto-Rickshaw vehicle prop
+   */
+  public static addAutoRickshaw(
+    parent: THREE.Group,
+    collisionSystem: CollisionSystem,
+    x: number,
+    y: number,
+    z: number,
+    rotY = 0,
+    name = 'Auto_Rickshaw'
+  ): THREE.Group {
+    const rickshawGroup = AssetLoader.getInstance().instantiate(
+      'prop_auto_rickshaw',
+      parent,
+      x,
+      y,
+      z,
+      rotY
+    )
+
+    this.registerBoxCollider(
+      collisionSystem,
+      x,
+      y + 0.85,
+      z,
+      1.4,
+      1.7,
+      2.7,
+      name
+    )
+
+    return rickshawGroup
+  }
+
+  /**
+   * Adds a high-quality Teak Wood and Cast-Iron Promenade Bench
+   */
+  public static addPromenadeBench(
+    parent: THREE.Group,
+    collisionSystem: CollisionSystem,
+    x: number,
+    y: number,
+    z: number,
+    rotY = 0,
+    name = 'Promenade_Bench'
+  ): THREE.Group {
+    const benchGroup = AssetLoader.getInstance().instantiate(
+      'prop_promenade_bench',
+      parent,
+      x,
+      y,
+      z,
+      rotY
+    )
+
+    this.registerBoxCollider(
+      collisionSystem,
+      x,
+      y + 0.4,
+      z,
+      2.2,
+      0.8,
+      0.8,
+      name
+    )
+
+    return benchGroup
+  }
+
+  /**
+   * Adds an Indian concrete roadside utility pole with transformer drum and crossarms
+   */
+  public static addUtilityPole(
+    parent: THREE.Group,
+    collisionSystem: CollisionSystem,
+    x: number,
+    z: number,
+    rotY = 0,
+    name = 'Utility_Pole'
+  ): THREE.Group {
+    const poleGroup = AssetLoader.getInstance().instantiate(
+      'prop_utility_pole',
+      parent,
+      x,
+      0,
+      z,
+      rotY
+    )
+
+    this.registerBoxCollider(
+      collisionSystem,
+      x,
+      3.9,
+      z,
+      0.6,
+      7.8,
+      0.6,
+      name
+    )
+
+    return poleGroup
   }
 }

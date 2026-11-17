@@ -9,6 +9,7 @@ import { TownCentre } from './districts/TownCentre'
 import { RoadNetwork } from './districts/RoadNetwork'
 import { CountrysideEdge } from './districts/CountrysideEdge'
 import { DistrictHelper } from './districts/DistrictHelper'
+import { AssetLoader } from './AssetLoader'
 
 /**
  * Seaview Town — Milestone M2 Explorable Coastal City
@@ -39,6 +40,9 @@ export class SeaviewTown {
 
     // 1. Build Base Ground Terrain
     this.buildBaseTerrain()
+
+    // Kick off concurrent background preloading of high-fidelity world GLB assets
+    AssetLoader.getInstance().preloadAll()
 
     // 2. Instantiate and mount all 7 Districts
     this.beachDistrict = new BeachDistrict(materials, collisionSystem)

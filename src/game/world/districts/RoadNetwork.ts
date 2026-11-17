@@ -15,7 +15,6 @@ export class RoadNetwork {
     const sidewalkMat = materials.getSidewalkMaterial()
     const promenadeMat = materials.getPromenadeTileMaterial()
     const railingMat = materials.getColorMaterial(0xd8d8d8, 0.5, 0.2)
-    const woodMat = materials.getTimberWoodMaterial()
 
     // 1. Coastal Marine Promenade (North-South, X: -20, Z: -110 to 110, width: 8m)
     const promenadeMesh = new THREE.Mesh(materials.boxGeometry, promenadeMat)
@@ -182,20 +181,15 @@ export class RoadNetwork {
       const nearOpening =
         Math.abs(z) <= 8 || (z >= -46 && z <= -34) || (z >= 14 && z <= 26)
       if (!nearOpening) {
-        const bench = DistrictHelper.addStaticBox(
+        DistrictHelper.addPromenadeBench(
           this.group,
           collisionSystem,
-          materials,
           -22.5,
-          0.35,
+          0.25,
           z,
-          1.0,
-          0.5,
-          2.2,
-          woodMat,
+          Math.PI / 2,
           `Promenade_Bench_${z}`
         )
-        bench.rotation.y = Math.PI / 2
       }
 
       // Promenade Streetlamp
@@ -224,6 +218,176 @@ export class RoadNetwork {
           `Coastal_Blvd_Lamp_${z}`
         )
       }
+    }
+
+    // 10. Parked Auto-Rickshaws along Coastal Boulevard roadside stands
+    DistrictHelper.addAutoRickshaw(
+      this.group,
+      collisionSystem,
+      -3.8,
+      0,
+      -32,
+      0,
+      'Coastal_Blvd_Rickshaw_South'
+    )
+    DistrictHelper.addAutoRickshaw(
+      this.group,
+      collisionSystem,
+      -3.8,
+      0,
+      36,
+      0,
+      'Coastal_Blvd_Rickshaw_North'
+    )
+
+    // 11. Concrete Utility Poles along the roadside infrastructure strip
+    DistrictHelper.addUtilityPole(
+      this.group,
+      collisionSystem,
+      -3.8,
+      -70,
+      0,
+      'Coastal_Blvd_Utility_Pole_South'
+    )
+    DistrictHelper.addUtilityPole(
+      this.group,
+      collisionSystem,
+      -3.8,
+      70,
+      0,
+      'Coastal_Blvd_Utility_Pole_North'
+    )
+
+    // 12. Realistic PBR Road Surface Markings & Zebra Pedestrian Crossings
+    this.buildRoadMarkings(materials)
+  }
+
+  private buildRoadMarkings(materials: MaterialFactory): void {
+    const whiteMat = new THREE.MeshStandardMaterial({
+      color: 0xf8f9fa,
+      roughness: 0.45,
+      metalness: 0.05,
+    })
+    const yellowMat = new THREE.MeshStandardMaterial({
+      color: 0xfdb813,
+      roughness: 0.45,
+      metalness: 0.05,
+    })
+    const drainGrateMat = new THREE.MeshStandardMaterial({
+      color: 0x212529,
+      roughness: 0.55,
+      metalness: 0.8,
+    })
+
+    const Y_MARKING = 0.038 // Elevated above road level (0.025m) to ensure sharp visibility without z-fighting
+
+    // A. White Dashed Centerlines
+    // 1. Coastal Boulevard North-South Dashed Centerline (X: -10, Z: -105 to 105)
+    for (let z = -105; z <= 105; z += 6.0) {
+      // Skip intersections
+      if (Math.abs(z) < 14 || (z >= 44 && z <= 56) || (z <= -44 && z >= -56)) continue
+      const dash = new THREE.Mesh(materials.boxGeometry, whiteMat)
+      dash.scale.set(0.18, 0.01, 3.2)
+      dash.position.set(-10, Y_MARKING, z)
+      this.group.add(dash)
+    }
+
+    // 2. Central Boulevard East-West Dashed Centerline (Z: 0, X: 5 to 88)
+    for (let x = 6; x <= 86; x += 6.0) {
+      // Skip Town Centre plaza intersection (X < 16)
+      if (x < 16) continue
+      const dash = new THREE.Mesh(materials.boxGeometry, whiteMat)
+      dash.scale.set(3.2, 0.01, 0.18)
+      dash.position.set(x, Y_MARKING, 0)
+      this.group.add(dash)
+    }
+
+    // 3. Residential Connector Dashed Centerline (X: 12, Z: -12 to -46)
+    for (let z = -12; z >= -46; z -= 5.0) {
+      const dash = new THREE.Mesh(materials.boxGeometry, whiteMat)
+      dash.scale.set(0.18, 0.01, 2.6)
+      dash.position.set(12, Y_MARKING, z)
+      this.group.add(dash)
+    }
+
+    // B. Solid White Edge Lines
+    // Coastal Boulevard West and East Edge Lines
+    const edgeLength = 80
+    for (const zCenter of [-60, 60]) {
+      for (const xEdge of [-15.2, -4.8]) {
+        const edgeLine = new THREE.Mesh(materials.boxGeometry, whiteMat)
+        edgeLine.scale.set(0.15, 0.01, edgeLength)
+        edgeLine.position.set(xEdge, Y_MARKING, zCenter)
+        this.group.add(edgeLine)
+      }
+    }
+
+    // Central Boulevard North and South Edge Lines
+    for (const zEdge of [-5.2, 5.2]) {
+      const edgeLine = new THREE.Mesh(materials.boxGeometry, whiteMat)
+      edgeLine.scale.set(70, 0.01, 0.15)
+      edgeLine.position.set(52, Y_MARKING, zEdge)
+      this.group.add(edgeLine)
+    }
+
+    // C. Realistic Zebra Pedestrian Crossings
+    // 1. Coastal Boulevard Grand Central Crossing (Z: 0, between Promenade and Central Plaza)
+    this.createZebraCrossing(materials, whiteMat, -10, 0, 10.4, 3.2, false)
+
+    // 2. Coastal Boulevard South Crossing (Z: -40)
+    this.createZebraCrossing(materials, whiteMat, -10, -40, 10.4, 2.8, false)
+
+    // 3. Coastal Boulevard North Crossing (Z: 20, Market Access)
+    this.createZebraCrossing(materials, whiteMat, -10, 20, 10.4, 2.8, false)
+
+    // 4. Central Boulevard East Crossing (X: 18, Town Centre Plaza exit)
+    this.createZebraCrossing(materials, whiteMat, 18, 0, 10.4, 3.0, true)
+
+    // D. Yellow Curb Loading Zones
+    for (const zCurb of [-28, 32]) {
+      const yellowStripe = new THREE.Mesh(materials.boxGeometry, yellowMat)
+      yellowStripe.scale.set(0.2, 0.01, 8.0)
+      yellowStripe.position.set(-4.2, Y_MARKING, zCurb)
+      this.group.add(yellowStripe)
+    }
+
+    // E. Storm Drain Grates along Boulevard Gutter Curbs
+    for (const zGrate of [-80, -50, -20, 20, 50, 80]) {
+      const grate = new THREE.Mesh(materials.boxGeometry, drainGrateMat)
+      grate.scale.set(0.85, 0.02, 0.55)
+      grate.position.set(-4.3, Y_MARKING, zGrate)
+      this.group.add(grate)
+    }
+  }
+
+  private createZebraCrossing(
+    materials: MaterialFactory,
+    mat: THREE.Material,
+    cx: number,
+    cz: number,
+    roadSpan: number,
+    stripeLength: number,
+    isAcrossEW: boolean
+  ): void {
+    const stripeWidth = 0.5
+    const gap = 0.4
+    const step = stripeWidth + gap
+    const numStripes = Math.floor(roadSpan / step)
+    const startOffset = -((numStripes - 1) * step) / 2
+
+    for (let i = 0; i < numStripes; i++) {
+      const offset = startOffset + i * step
+      const stripe = new THREE.Mesh(materials.boxGeometry, mat)
+      if (isAcrossEW) {
+        // Road runs East-West, crossing runs North-South, stripes run East-West
+        stripe.scale.set(stripeLength, 0.01, stripeWidth)
+        stripe.position.set(cx, 0.038, cz + offset)
+      } else {
+        // Road runs North-South, crossing runs East-West, stripes run North-South
+        stripe.scale.set(stripeWidth, 0.01, stripeLength)
+        stripe.position.set(cx + offset, 0.038, cz)
+      }
+      this.group.add(stripe)
     }
   }
 

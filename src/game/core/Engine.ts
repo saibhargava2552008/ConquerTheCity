@@ -63,7 +63,7 @@ export class Engine {
     const height = Math.max(container.clientHeight, 1)
     this.camera = new THREE.PerspectiveCamera(65, width / height, 0.1, 400)
 
-    // 3. Renderer with Intel integrated graphics optimizations
+    // 3. Renderer with Intel integrated graphics optimizations & high-quality PBR settings
     this.renderer = new THREE.WebGLRenderer({
       antialias: true,
       powerPreference: 'high-performance',
@@ -72,10 +72,11 @@ export class Engine {
     this.renderer.setSize(width, height)
     // Cap pixel ratio to 1.5 to protect Intel UHD/Iris Xe laptops
     this.renderer.setPixelRatio(Math.min(window.devicePixelRatio, 1.5))
+    this.renderer.outputColorSpace = THREE.SRGBColorSpace
     this.renderer.shadowMap.enabled = true
-    this.renderer.shadowMap.type = THREE.PCFShadowMap
+    this.renderer.shadowMap.type = THREE.PCFSoftShadowMap
     this.renderer.toneMapping = THREE.ACESFilmicToneMapping
-    this.renderer.toneMappingExposure = 1.05
+    this.renderer.toneMappingExposure = 1.12
 
     container.appendChild(this.renderer.domElement)
 

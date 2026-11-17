@@ -2,6 +2,7 @@ import * as THREE from 'three'
 import type { MaterialFactory } from '../MaterialFactory'
 import type { CollisionSystem } from '../../physics/CollisionSystem'
 import { DistrictHelper } from './DistrictHelper'
+import { AssetLoader } from '../AssetLoader'
 
 export class TownCentre {
   public readonly group = new THREE.Group()
@@ -29,7 +30,6 @@ export class TownCentre {
       emissiveIntensity: 2.5,
       roughness: 0.1,
     })
-    const woodMat = materials.getTimberWoodMaterial()
     const metalMat = materials.getColorMaterial(0x2b2d42, 0.4, 0.6)
 
     // 1. Central Plaza Platform (X: 0, Z: 0, 30m x 30m, walkable platform at Y = 0.35m)
@@ -79,6 +79,9 @@ export class TownCentre {
     }
 
     // 2. The Seaview Lighthouse Landmark (Center at X: 0, Z: -5)
+    const proceduralLighthouse = new THREE.Group()
+    this.group.add(proceduralLighthouse)
+
     // Lighthouse Octagonal Stone Foundation Base (8m x 8m, height: 4m)
     const baseH = 4.0
     const base = new THREE.Mesh(materials.cylinderGeometry, stoneMat)
@@ -86,7 +89,7 @@ export class TownCentre {
     base.position.set(0, baseH / 2, -5)
     base.castShadow = true
     base.receiveShadow = true
-    this.group.add(base)
+    proceduralLighthouse.add(base)
 
     // Lighthouse Main Tapered Tower (Height: 20m, radius: 3.2m to 2.2m)
     const towerH = 20.0
@@ -94,7 +97,7 @@ export class TownCentre {
     tower.scale.set(2.8, towerH, 2.8)
     tower.position.set(0, baseH + towerH / 2, -5)
     tower.castShadow = true
-    this.group.add(tower)
+    proceduralLighthouse.add(tower)
 
     // Observation Gallery Walkway (Height: 0.6m, width: 6.8m)
     const galleryY = baseH + towerH
@@ -102,20 +105,20 @@ export class TownCentre {
     gallery.scale.set(3.6, 0.6, 3.6)
     gallery.position.set(0, galleryY + 0.3, -5)
     gallery.castShadow = true
-    this.group.add(gallery)
+    proceduralLighthouse.add(gallery)
 
     // Gallery Metal Safety Railing
     const railing = new THREE.Mesh(materials.cylinderGeometry, metalMat)
     railing.scale.set(3.6, 1.1, 3.6)
     railing.position.set(0, galleryY + 1.1, -5)
-    this.group.add(railing)
+    proceduralLighthouse.add(railing)
 
     // Glass Lantern Room (Height: 3.2m)
     const lanternY = galleryY + 0.6
     const lantern = new THREE.Mesh(materials.cylinderGeometry, glassMat)
     lantern.scale.set(2.2, 3.0, 2.2)
     lantern.position.set(0, lanternY + 1.5, -5)
-    this.group.add(lantern)
+    proceduralLighthouse.add(lantern)
 
     // Lighthouse Conical Copper Dome Roof
     const domeMat = materials.getColorMaterial(0x2a9d8f, 0.4, 0.5)
@@ -123,7 +126,7 @@ export class TownCentre {
     dome.scale.set(2.8, 2.2, 2.8)
     dome.position.set(0, lanternY + 3.0 + 1.1, -5)
     dome.castShadow = true
-    this.group.add(dome)
+    proceduralLighthouse.add(dome)
 
     // Revolving Light Beacon Emitter
     this.beaconPivot = new THREE.Group()
@@ -141,13 +144,27 @@ export class TownCentre {
     portalFrame.scale.set(3.2, 3.4, 0.8)
     portalFrame.position.set(0, 1.7, -2.0)
     portalFrame.castShadow = true
-    this.group.add(portalFrame)
+    proceduralLighthouse.add(portalFrame)
 
     // Walkable entrance arch opening cutout (inner archway)
     const portalOpening = new THREE.Mesh(materials.boxGeometry, stoneMat)
     portalOpening.scale.set(2.0, 2.6, 0.9)
     portalOpening.position.set(0, 1.3, -2.0)
-    this.group.add(portalOpening)
+    proceduralLighthouse.add(portalOpening)
+
+    // Mount high-fidelity 3D GLB Stone Lighthouse Landmark Asset
+    AssetLoader.getInstance().instantiate(
+      'landmark_seaview_lighthouse',
+      this.group,
+      0,
+      0,
+      -6.3,
+      0,
+      1.0,
+      () => {
+        proceduralLighthouse.visible = false
+      }
+    )
 
     // Lighthouse Foundation & Tower Colliders (leaving the South entrance archway walkable)
     // Main Tower & Rear Base Collider (Z: -8.0 to -3.2)
@@ -221,33 +238,28 @@ export class TownCentre {
       )
     }
 
-    // 4. Teak Wood Plaza Benches positioned in the calm lighthouse garden alcoves
+    // 4. Teak Wood & Cast-Iron Plaza Benches positioned in lighthouse garden alcoves
     const benches = [
-      [4, 0.3, -3, -Math.PI / 2],
-      [-4, 0.3, -3, Math.PI / 2],
-      [4, 0.3, -7, -Math.PI / 2],
-      [-4, 0.3, -7, Math.PI / 2],
+      [4, 0.35, -3, -Math.PI / 2],
+      [-4, 0.35, -3, Math.PI / 2],
+      [4, 0.35, -7, -Math.PI / 2],
+      [-4, 0.35, -7, Math.PI / 2],
     ]
 
     for (let i = 0; i < benches.length; i++) {
       const [bx, by, bz, rot] = benches[i]
-      const bench = DistrictHelper.addStaticBox(
+      DistrictHelper.addPromenadeBench(
         this.group,
         collisionSystem,
-        materials,
         bx,
         by,
         bz,
-        2.2,
-        0.5,
-        0.8,
-        woodMat,
+        rot,
         `Plaza_Bench_${i}`
       )
-      bench.rotation.y = rot
     }
 
-    // 5. Colonial Streetlamps at Plaza Corner Perimeters (keeping all roads and walkways 100% open)
+    // 5. Colonial Victorian Marine Streetlamps at Plaza Corner Perimeters
     const lampCorners = [
       [11, 11],
       [-11, 11],
@@ -265,6 +277,44 @@ export class TownCentre {
         `TownCentre_Lamp_${lx}_${lz}`
       )
     }
+
+    // 6. Parked Iconic Indian Auto-Rickshaws at Plaza Auto Stands
+    DistrictHelper.addAutoRickshaw(
+      this.group,
+      collisionSystem,
+      -12,
+      0.35,
+      12,
+      -Math.PI / 4,
+      'Plaza_Auto_Rickshaw_West'
+    )
+    DistrictHelper.addAutoRickshaw(
+      this.group,
+      collisionSystem,
+      12,
+      0.35,
+      12,
+      Math.PI / 4,
+      'Plaza_Auto_Rickshaw_East'
+    )
+
+    // 7. Concrete Utility Poles with Transformers along road perimeters
+    DistrictHelper.addUtilityPole(
+      this.group,
+      collisionSystem,
+      -14,
+      -14,
+      0,
+      'Plaza_Utility_Pole_West'
+    )
+    DistrictHelper.addUtilityPole(
+      this.group,
+      collisionSystem,
+      14,
+      -14,
+      0,
+      'Plaza_Utility_Pole_East'
+    )
   }
 
   public updateBeacon(dt: number): void {
