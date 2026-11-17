@@ -1,5 +1,6 @@
 import React, { useEffect, useRef, useState, useCallback } from 'react'
 import { Engine } from '../game/core/Engine'
+import type { CharacterId } from '../game/entities/Player'
 import type { EngineStats, PlayerStats, MissionObjective } from '../game/core/Types'
 import { HUD } from './HUD'
 import { ControlsOverlay } from './ControlsOverlay'
@@ -7,6 +8,16 @@ import { ControlsOverlay } from './ControlsOverlay'
 export const GameCanvas: React.FC = () => {
   const mountRef = useRef<HTMLDivElement>(null)
   const engineRef = useRef<Engine | null>(null)
+
+  const [selectedCharacter, setSelectedCharacter] = useState<CharacterId>(() => {
+    if (typeof window !== 'undefined') {
+      const saved = localStorage.getItem('ctc_selected_character')
+      if (saved === 'aarav' || saved === 'ananya') {
+        return saved
+      }
+    }
+    return 'aarav'
+  })
 
   const [isLocked, setIsLocked] = useState(false)
   const [stats, setStats] = useState<EngineStats | null>(null)
@@ -17,8 +28,8 @@ export const GameCanvas: React.FC = () => {
     const container = mountRef.current
     if (!container) return
 
-    // Instantiate modular engine
-    const engine = new Engine(container)
+    // Instantiate modular engine with ONLY the selected character (preventing loading both models)
+    const engine = new Engine(container, selectedCharacter)
     engineRef.current = engine
 
     // Initialize objectives
@@ -41,13 +52,29 @@ export const GameCanvas: React.FC = () => {
       setObjectives(objs)
     })
 
+    // Listen for 'KeyF' to trigger character hand interaction gesture
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.code === 'KeyF' && !e.repeat) {
+        engine.player.triggerHandInteraction()
+      }
+    }
+    window.addEventListener('keydown', handleKeyDown)
+
     return () => {
+      window.removeEventListener('keydown', handleKeyDown)
       unsubStats()
       unsubPlayer()
       unsubLock()
       unsubObjectives()
       engine.dispose()
       engineRef.current = null
+    }
+  }, [selectedCharacter])
+
+  const handleSelectCharacter = useCallback((id: CharacterId) => {
+    setSelectedCharacter(id)
+    if (typeof window !== 'undefined') {
+      localStorage.setItem('ctc_selected_character', id)
     }
   }, [])
 
@@ -78,6 +105,8 @@ export const GameCanvas: React.FC = () => {
       {/* Controls and Pause/Entry Overlay */}
       <ControlsOverlay
         isLocked={isLocked}
+        selectedCharacter={selectedCharacter}
+        onSelectCharacter={handleSelectCharacter}
         onRequestLock={handleRequestLock}
         onResetPosition={handleResetPosition}
       />

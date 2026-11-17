@@ -4,7 +4,46 @@ import { Entity } from './Entity'
 import type { MovementState } from '../core/Types'
 import { damp, clamp } from '../physics/MathUtils'
 
+export type CharacterId = 'aarav' | 'ananya'
+
+export interface CharacterConfig {
+  id: CharacterId
+  name: string
+  role: string
+  modelUrl: string
+  placeholderJacketColor: number
+  placeholderPantsColor: number
+  placeholderSkinColor: number
+  placeholderAccentColor: number
+}
+
+export const CHARACTER_CONFIGS: Record<CharacterId, CharacterConfig> = {
+  aarav: {
+    id: 'aarav',
+    name: 'Aarav',
+    role: 'Tactical Enforcer & Precision Driver',
+    modelUrl: '/models/aarav_character.glb',
+    placeholderJacketColor: 0x1d3557, // Deep Navy
+    placeholderPantsColor: 0x2b2d42,  // Indigo / Charcoal
+    placeholderSkinColor: 0xe0a96d,   // Warm Tan
+    placeholderAccentColor: 0xf72585, // Vibrant accent stripe
+  },
+  ananya: {
+    id: 'ananya',
+    name: 'Ananya',
+    role: 'Street-Smart Operations Architect',
+    modelUrl: '/models/ananya_character.glb',
+    placeholderJacketColor: 0x2d6a4f, // Fitted Tactical Olive
+    placeholderPantsColor: 0x3d405b,  // Dark Slate Cargo
+    placeholderSkinColor: 0xd49b6a,   // Olive / Medium Tan
+    placeholderAccentColor: 0xe76f51, // Terracotta accent stripe
+  },
+}
+
 export class Player extends Entity {
+  public readonly characterId: CharacterId
+  public readonly config: CharacterConfig
+
   // Visual root for orientation and banking
   public readonly modelRoot: THREE.Group
 
@@ -18,9 +57,10 @@ export class Player extends Entity {
   private readonly rightLegPivot: THREE.Group
 
   // Skeletal model & Animation Mixer
-  private aaravModel: THREE.Group | null = null
+  private characterModel: THREE.Group | null = null
   private mixer: THREE.AnimationMixer | null = null
   private readonly actions = new Map<string, THREE.AnimationAction>()
+  private readonly semanticActions = new Map<string, THREE.AnimationAction>()
   private currentAction: THREE.AnimationAction | null = null
   private currentActionName = ''
   private isLoaded = false
@@ -33,8 +73,12 @@ export class Player extends Entity {
   private landingTimer = 0
   private interactionTimer = 0
 
-  constructor(modelUrl = '/models/aarav_character.glb') {
-    super('player_character')
+  constructor(characterId: CharacterId = 'aarav', modelUrl?: string) {
+    super(`player_${characterId}`)
+
+    this.characterId = characterId
+    this.config = CHARACTER_CONFIGS[characterId] || CHARACTER_CONFIGS.aarav
+    const finalModelUrl = modelUrl || this.config.modelUrl
 
     this.modelRoot = new THREE.Group()
     this.mesh.add(this.modelRoot)
@@ -46,17 +90,17 @@ export class Player extends Entity {
     this.modelRoot.add(this.placeholderGroup)
 
     const jacketMat = new THREE.MeshStandardMaterial({
-      color: 0x1d3557,
+      color: this.config.placeholderJacketColor,
       roughness: 0.6,
       metalness: 0.1,
     })
     const pantsMat = new THREE.MeshStandardMaterial({
-      color: 0x2b2d42,
+      color: this.config.placeholderPantsColor,
       roughness: 0.7,
       metalness: 0.1,
     })
     const skinMat = new THREE.MeshStandardMaterial({
-      color: 0xe0a96d,
+      color: this.config.placeholderSkinColor,
       roughness: 0.8,
     })
     const visorMat = new THREE.MeshStandardMaterial({
@@ -71,8 +115,8 @@ export class Player extends Entity {
       roughness: 0.8,
     })
     const accentMat = new THREE.MeshStandardMaterial({
-      color: 0xf72585,
-      emissive: 0xf72585,
+      color: this.config.placeholderAccentColor,
+      emissive: this.config.placeholderAccentColor,
       emissiveIntensity: 0.3,
     })
 
@@ -161,7 +205,7 @@ export class Player extends Entity {
     this.rightLegPivot.add(rightBootMesh)
 
     // ------------------------------------------------------------------
-    // 2. ASYNC LOAD AARAV GLTF ASSET (Browser runtime only)
+    // 2. ASYNC LOAD CHARACTER GLTF ASSET (Browser runtime only)
     // ------------------------------------------------------------------
     const isBrowser =
       typeof window !== 'undefined' &&
@@ -169,13 +213,13 @@ export class Player extends Entity {
       typeof window.location.origin === 'string' &&
       window.location.origin.startsWith('http')
 
-    if (isBrowser && modelUrl) {
-      this.loadModel(modelUrl)
+    if (isBrowser && finalModelUrl) {
+      this.loadModel(finalModelUrl)
     }
   }
 
   /**
-   * Asynchronously loads Aarav 3D GLTF asset with shadow binding and animation setup
+   * Asynchronously loads character 3D GLTF asset with shadow binding and animation setup
    */
   private loadModel(url: string): void {
     try {
@@ -187,12 +231,12 @@ export class Player extends Entity {
         },
         undefined,
         (err: unknown) => {
-          console.warn(`[Player] Failed to load 3D character asset from ${url}. Using procedural model fallback.`, err)
+          console.warn(`[Player] Failed to load 3D character asset (${this.characterId}) from ${url}. Using procedural model fallback.`, err)
           this.loadFailed = true
         }
       )
     } catch (err) {
-      console.warn(`[Player] Error initiating 3D model load:`, err)
+      console.warn(`[Player] Error initiating 3D character model load:`, err)
       this.loadFailed = true
     }
   }
@@ -202,10 +246,10 @@ export class Player extends Entity {
       return
     }
 
-    this.aaravModel = gltf.scene
+    this.characterModel = gltf.scene
 
     // Setup shadows and render optimization for mobile / Intel graphics
-    this.aaravModel.traverse(child => {
+    this.characterModel.traverse(child => {
       if (child instanceof THREE.Mesh) {
         child.castShadow = true
         child.receiveShadow = true
@@ -214,45 +258,59 @@ export class Player extends Entity {
       }
     })
 
-    // Mount Aarav model to the orientation root
-    this.modelRoot.add(this.aaravModel)
+    // Mount character model to the orientation root
+    this.modelRoot.add(this.characterModel)
 
-    // Hide procedural placeholder once Aarav is in place
+    // Hide procedural placeholder once character model is in place
     this.placeholderGroup.visible = false
 
     // Initialize Three.js Animation Mixer
-    this.mixer = new THREE.AnimationMixer(this.aaravModel)
+    this.mixer = new THREE.AnimationMixer(this.characterModel)
 
     for (const clip of gltf.animations) {
       const action = this.mixer.clipAction(clip)
-      if (
-        clip.name === 'Aarav_Jump' ||
-        clip.name === 'Aarav_Landing' ||
-        clip.name === 'Aarav_Hand_Interaction'
-      ) {
+      const lower = clip.name.toLowerCase()
+      const isOneShot =
+        lower.includes('jump') ||
+        lower.includes('landing') ||
+        lower.includes('interaction')
+
+      if (isOneShot) {
         action.setLoop(THREE.LoopOnce, 1)
         action.clampWhenFinished = true
       } else {
         action.setLoop(THREE.LoopRepeat, Infinity)
       }
+
       this.actions.set(clip.name, action)
+
+      // Dynamic semantic key mapping (works identically for Aarav_* and Ananya_* clips)
+      if (lower.includes('idle')) this.semanticActions.set('idle', action)
+      else if (lower.includes('sprint')) this.semanticActions.set('sprint', action)
+      else if (lower.includes('run')) this.semanticActions.set('run', action)
+      else if (lower.includes('walk')) this.semanticActions.set('walk', action)
+      else if (lower.includes('jump')) this.semanticActions.set('jump', action)
+      else if (lower.includes('landing')) this.semanticActions.set('landing', action)
+      else if (lower.includes('turn')) this.semanticActions.set('turn_left', action)
+      else if (lower.includes('interaction')) this.semanticActions.set('hand_interaction', action)
     }
 
     this.isLoaded = true
 
     // Start with Idle animation
-    this.switchAction('Aarav_Idle', 0.1)
+    this.switchAction('idle', 0.1)
   }
 
   /**
    * Smoothly crossfades between animation clips with optional gait cycle phase sync
    */
-  private switchAction(targetName: string, fadeDuration = 0.2, syncGait = false): void {
-    if (this.currentActionName === targetName) {
+  public switchAction(targetKey: string, fadeDuration = 0.2, syncGait = false): void {
+    if (this.currentActionName === targetKey) {
       return
     }
 
-    const nextAction = this.actions.get(targetName)
+    // Resolve by semantic key or direct clip name
+    const nextAction = this.semanticActions.get(targetKey) || this.actions.get(targetKey)
     if (!nextAction) {
       return
     }
@@ -292,7 +350,7 @@ export class Player extends Entity {
     nextAction.play()
 
     this.currentAction = nextAction
-    this.currentActionName = targetName
+    this.currentActionName = targetKey
   }
 
   /**
@@ -330,26 +388,26 @@ export class Player extends Entity {
         // Airborne: Jump ascent or Fall descent
         const isAscending =
           state === 'jumping' ||
-          (this.currentActionName === 'Aarav_Jump' &&
+          (this.currentActionName === 'jump' &&
             this.currentAction &&
             this.currentAction.time < 0.45)
 
         if (isAscending) {
-          this.switchAction('Aarav_Jump', 0.08)
+          this.switchAction('jump', 0.08)
           if (this.currentAction) {
             // Synchronize takeoff and rise with jump physics impulse (~0.38s to apex)
             this.currentAction.timeScale = 1.15
           }
         } else {
           // Descending / falling (or stepped off a high ledge)
-          this.switchAction('Aarav_Jump', 0.12)
+          this.switchAction('jump', 0.12)
           if (this.currentAction) {
             const clipDur = this.currentAction.getClip().duration
             // If just entered falling directly (e.g. walked off an edge), skip takeoff crouch to airborne glide
             if (this.currentAction.time < clipDur * 0.55) {
               this.currentAction.time = clipDur * 0.55
             }
-            // Loop/hold the mid-air glide pose (frame 14-20) while falling
+            // Loop/hold the mid-air glide pose while falling
             if (this.currentAction.time > clipDur * 0.85) {
               this.currentAction.time = clipDur * 0.58
             }
@@ -360,47 +418,45 @@ export class Player extends Entity {
         // Landing impact recovery
         this.landingTimer -= dt
         const landFade = speed > 2.0 ? 0.08 : 0.12
-        this.switchAction('Aarav_Landing', landFade)
+        this.switchAction('landing', landFade)
         if (this.currentAction) {
           this.currentAction.timeScale = speed > 2.0 ? 1.6 : 1.2
         }
       } else if (this.interactionTimer > 0) {
         // Hand interaction clip playing
-        this.switchAction('Aarav_Hand_Interaction', 0.15)
+        this.switchAction('hand_interaction', 0.15)
       } else if (speed > 0.25) {
         // Ground locomotion: Walk, Run, or Sprint
         const isSprinting = (state === 'sprinting' || speed > 7.2) && isGrounded
         const isRunning = !isSprinting && speed > 3.2
 
         if (isSprinting) {
-          this.switchAction('Aarav_Sprint', 0.18, true)
+          this.switchAction('sprint', 0.18, true)
           if (this.currentAction) {
-            // Duration 0.533s: At 10.5 m/s, cadence matches ground displacement
+            // Cadence matches ground displacement
             this.currentAction.timeScale = clamp(speed / 9.8, 0.75, 1.35)
           }
         } else if (isRunning) {
-          this.switchAction('Aarav_Run', 0.20, true)
+          this.switchAction('run', 0.20, true)
           if (this.currentAction) {
-            // Duration 0.800s: At 5.5 m/s, cadence matches ground displacement
             this.currentAction.timeScale = clamp(speed / 5.2, 0.65, 1.35)
           }
         } else {
           // Walk (acceleration, slow maneuver, stopping)
-          this.switchAction('Aarav_Walk', 0.20, true)
+          this.switchAction('walk', 0.20, true)
           if (this.currentAction) {
-            // Duration 1.067s: At 2.2 m/s, cadence matches ground displacement
             this.currentAction.timeScale = clamp(speed / 2.2, 0.45, 1.35)
           }
         }
       } else {
         // Stationary: Idle or In-Place Turning
         if (Math.abs(turnRate) > 1.8) {
-          this.switchAction('Aarav_Turn_Left', 0.15)
+          this.switchAction('turn_left', 0.15)
           if (this.currentAction) {
             this.currentAction.timeScale = clamp(Math.abs(turnRate) / 2.5, 0.8, 1.6)
           }
         } else {
-          this.switchAction('Aarav_Idle', 0.22)
+          this.switchAction('idle', 0.22)
           if (this.currentAction) {
             this.currentAction.timeScale = 1.0
           }
@@ -455,12 +511,16 @@ export class Player extends Entity {
   }
 
   /**
-   * Optional manual trigger for Aarav's hand interaction clip
+   * Optional manual trigger for hand interaction clip
    */
   public triggerHandInteraction(): void {
-    if (this.actions.has('Aarav_Hand_Interaction')) {
+    if (
+      this.semanticActions.has('hand_interaction') ||
+      this.actions.has('Aarav_Hand_Interaction') ||
+      this.actions.has('Ananya_Hand_Interaction')
+    ) {
       this.interactionTimer = 0.8
-      this.switchAction('Aarav_Hand_Interaction', 0.15)
+      this.switchAction('hand_interaction', 0.15)
     }
   }
 
@@ -481,10 +541,11 @@ export class Player extends Entity {
 
     if (this.mixer) {
       this.mixer.stopAllAction()
-      this.mixer.uncacheRoot(this.aaravModel || this.modelRoot)
+      this.mixer.uncacheRoot(this.characterModel || this.modelRoot)
       this.mixer = null
     }
     this.actions.clear()
+    this.semanticActions.clear()
     this.currentAction = null
 
     super.dispose()

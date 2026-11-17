@@ -3,7 +3,7 @@ import { CollisionSystem } from '../physics/CollisionSystem'
 import { MaterialFactory } from '../world/MaterialFactory'
 import { CityBuilder } from '../world/CityBuilder'
 import { SkyAndLighting } from '../world/SkyAndLighting'
-import { Player } from '../entities/Player'
+import { Player, type CharacterId } from '../entities/Player'
 import { PlayerController } from '../entities/PlayerController'
 import { ThirdPersonCamera } from '../camera/ThirdPersonCamera'
 import { InputManager } from '../input/InputManager'
@@ -25,6 +25,7 @@ export class Engine {
   public readonly renderer: THREE.WebGLRenderer
 
   public readonly events = new EventEmitter<EngineEvents>()
+  public readonly characterId: CharacterId
   public readonly collisionSystem: CollisionSystem
   public readonly materials: MaterialFactory
   public readonly cityBuilder: CityBuilder
@@ -50,8 +51,9 @@ export class Engine {
   private resizeObserver: ResizeObserver | null = null
   private boundOnResize: (() => void) | null = null
 
-  constructor(container: HTMLElement) {
+  constructor(container: HTMLElement, characterId: CharacterId = 'aarav') {
     this.container = container
+    this.characterId = characterId
 
     // 1. Scene
     this.scene = new THREE.Scene()
@@ -85,7 +87,7 @@ export class Engine {
     this.cityBuilder.build()
 
     // 5. Player Entity & Controller
-    this.player = new Player()
+    this.player = new Player(this.characterId)
     // Spawn player in the plaza facing North at ground level
     this.player.setPosition(0, 0, 8)
     this.scene.add(this.player.mesh)
