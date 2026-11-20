@@ -1,4 +1,5 @@
 import * as THREE from 'three'
+import * as BufferGeometryUtils from 'three/examples/jsm/utils/BufferGeometryUtils.js'
 import type { MaterialFactory } from '../MaterialFactory'
 import type { CollisionSystem } from '../../physics/CollisionSystem'
 import { DistrictHelper } from './DistrictHelper'
@@ -36,6 +37,9 @@ export class BeachDistrict {
 
     // 3. Deep Water Boundary Wall (Invisible safety collider at X: -62 to prevent falling into deep abyss)
     DistrictHelper.registerBoxCollider(collisionSystem, -62, 5, 0, 4, 14, 280, 'Ocean_Safety_Barrier')
+
+    // 4. Coastal Breakwater Rip-Rap Groyne (South of Harbour Road, Z: 41.0 to 43.5, X: -24 to -46)
+    this.buildBreakwaterGroyne(materials, collisionSystem)
 
     // 4. Accessible Wooden Beach Boardwalks & Stairways connecting Promenade to the Sand
     // 4a. Central Grand Beach Stairway (at Z: 0, 10m wide gentle stairs down from Promenade curb)
@@ -283,6 +287,51 @@ export class BeachDistrict {
         )
       }
     }
+  }
+
+  /**
+   * Constructs an authentic coastal granite rip-rap breakwater groyne
+   * Positioned strictly South of the Harbour Road opening (Z = 41.0 to 43.5, X = -24.0 to -46.0)
+   * Protects the recreation beach from harbour silt while keeping road and vessel channels 100% open.
+   */
+  private buildBreakwaterGroyne(materials: MaterialFactory, collisionSystem: CollisionSystem): void {
+    const rockMat = materials.getColorMaterial(0x3a3d40, 0.85, 0.1)
+    const boulderGeos: THREE.BufferGeometry[] = []
+
+    for (let i = 0; i < 16; i++) {
+      const t = i / 15
+      const bx = -24.0 - t * 22.0 // from -24.0 (dune) to -46.0 (low-water swash)
+      const bz = 41.5 + ((i % 3) - 1) * 0.7 // Z: 40.8 to 43.2 (safe clearance from Z = 44 road opening)
+      const by = 0.20 - t * 0.75 // sloping from Y = 0.20 down to Y = -0.55 in water
+      const bScale = 1.2 + (i % 4) * 0.25
+
+      const geo = new THREE.DodecahedronGeometry(bScale * 0.7, 0)
+      geo.scale(1.2, 0.85, 1.1)
+      geo.rotateY((i * 1.3) % Math.PI)
+      geo.rotateX((i * 0.7) % 0.4)
+      geo.translate(bx, by + bScale * 0.35, bz)
+      boulderGeos.push(geo)
+    }
+
+    const mergedGeo = BufferGeometryUtils.mergeGeometries(boulderGeos)
+    if (mergedGeo) {
+      const groyneMesh = new THREE.Mesh(mergedGeo, rockMat)
+      groyneMesh.castShadow = true
+      groyneMesh.receiveShadow = true
+      this.group.add(groyneMesh)
+    }
+
+    // Solid collision barrier across the groyne boulders
+    DistrictHelper.registerBoxCollider(
+      collisionSystem,
+      -35.0,
+      0.20,
+      42.25,
+      22.0,
+      1.20,
+      2.5,
+      'Breakwater_RipRap_Groyne'
+    )
   }
 
   public updateWater(dt: number): void {

@@ -656,10 +656,11 @@ export class DistrictHelper {
     x: number,
     z: number,
     height = 5.2,
-    name = 'Street_Lamp'
+    name = 'Street_Lamp',
+    y = 0
   ): void {
     const lampGroup = new THREE.Group()
-    lampGroup.position.set(x, 0, z)
+    lampGroup.position.set(x, y, z)
 
     const proceduralGroup = new THREE.Group()
     lampGroup.add(proceduralGroup)
@@ -711,7 +712,7 @@ export class DistrictHelper {
 
     parent.add(lampGroup)
 
-    this.registerBoxCollider(collisionSystem, x, height / 2, z, 0.4, height, 0.4, name)
+    this.registerBoxCollider(collisionSystem, x, y + height / 2, z, 0.4, height, 0.4, name)
   }
 
   /**
@@ -1369,18 +1370,77 @@ export class DistrictHelper {
     x: number,
     z: number,
     rotY = 0,
-    name = 'Blender_Planter'
+    name = 'Blender_Planter',
+    y = 0
   ): THREE.Group {
     const anchor = AssetLoader.getInstance().instantiate(
       'prop_terracotta_planter_01',
       parent,
       x,
-      0,
+      y,
       z,
       rotY
     )
-    this.registerBoxCollider(collisionSystem, x, 0.6, z, 0.65, 1.2, 0.65, name)
+    this.registerBoxCollider(collisionSystem, x, y + 0.6, z, 0.65, 1.2, 0.65, name)
     return anchor
+  }
+
+  /**
+   * Adds an authentic Indian coastal public foot-wash tap station for beach sand rinse
+   */
+  public static addFootWashStation(
+    parent: THREE.Group,
+    collisionSystem: CollisionSystem,
+    materials: MaterialFactory,
+    x: number,
+    y: number,
+    z: number,
+    rotY = 0,
+    name = 'Foot_Wash_Station'
+  ): THREE.Group {
+    const stationGroup = new THREE.Group()
+    stationGroup.position.set(x, y, z)
+    stationGroup.rotation.y = rotY
+
+    const graniteMat = materials.getColorMaterial(0x64748b, 0.4, 0.1)
+    const chromeMat = materials.getColorMaterial(0xe2e8f0, 0.2, 0.8)
+    const basinMat = materials.getColorMaterial(0x334155, 0.3, 0.3)
+
+    // Granite vertical tap pedestal
+    const pedestal = new THREE.Mesh(materials.boxGeometry, graniteMat)
+    pedestal.scale.set(0.45, 0.90, 0.45)
+    pedestal.position.set(0, 0.45, 0)
+    pedestal.castShadow = true
+    stationGroup.add(pedestal)
+
+    // Chrome press-action water tap fixture
+    const tapPipe = new THREE.Mesh(materials.cylinderGeometry, chromeMat)
+    tapPipe.scale.set(0.04, 0.20, 0.04)
+    tapPipe.position.set(0, 0.75, 0.25)
+    tapPipe.rotation.x = Math.PI / 4
+    stationGroup.add(tapPipe)
+
+    // Stainless steel lower foot wash basin & sand drain
+    const basin = new THREE.Mesh(materials.boxGeometry, basinMat)
+    basin.scale.set(0.75, 0.08, 0.75)
+    basin.position.set(0, 0.04, 0.35)
+    basin.receiveShadow = true
+    stationGroup.add(basin)
+
+    parent.add(stationGroup)
+
+    this.registerBoxCollider(
+      collisionSystem,
+      x,
+      y + 0.45,
+      z + 0.15,
+      0.75,
+      0.90,
+      0.75,
+      name
+    )
+
+    return stationGroup
   }
 
   public static addBlenderVendorSign(

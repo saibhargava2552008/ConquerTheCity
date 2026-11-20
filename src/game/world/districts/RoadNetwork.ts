@@ -17,32 +17,80 @@ export class RoadNetwork {
     const promenadeMat = materials.getPromenadeTileMaterial()
     const railingMat = materials.getColorMaterial(0xd8d8d8, 0.5, 0.2)
 
-    // 1. Coastal Marine Promenade (North-South, X: -20, Z: -110 to 110, width: 8m)
-    const promenadeMesh = new THREE.Mesh(materials.boxGeometry, promenadeMat)
-    promenadeMesh.scale.set(8, 0.25, 220)
-    promenadeMesh.position.set(-20, 0.125, 0)
+    // 1. Coastal Marine Promenade Concourse (South Belvedere at Z: -128 to North Terminus at Z: 44)
+    // 1a. Straight Concourse (X: -24 to -16, Z: -122 to 44, width 8m, height 0.25m, deck surface at Y = 0.25m)
+    const straightPromGeo = new THREE.BoxGeometry(8, 0.25, 166)
+    straightPromGeo.translate(-20, 0.125, -39)
+
+    // 1b. Southern Rounded Scenic Belvedere (Radius 6m centered at X: -20, Z: -122, protruding seaward and to Z: -128)
+    const belvedereGeo = new THREE.CylinderGeometry(6.0, 6.0, 0.25, 32)
+    belvedereGeo.translate(-20, 0.125, -122)
+
+    const mergedPromGeo = BufferGeometryUtils.mergeGeometries([straightPromGeo, belvedereGeo])
+    const promenadeMesh = new THREE.Mesh(mergedPromGeo || straightPromGeo, promenadeMat)
     promenadeMesh.receiveShadow = true
     this.group.add(promenadeMesh)
 
-    // Promenade Sea-Facing Stone Balustrade / Railing with pedestrian and vehicle access openings:
-    // - Central Grand Beach Stairway opening at Z in [-6, 6] (12m opening)
-    // - South Beach access opening at Z in [-43, -37] (6m opening)
-    // - North Beach access opening at Z in [17, 23] (6m opening)
-    // - North Harbour Road access opening at Z in [44, 56] (12m opening for harbour connection)
+    // Register Walkable Promenade Colliders
+    DistrictHelper.registerBoxCollider(
+      collisionSystem,
+      -20,
+      0.125,
+      -39,
+      8,
+      0.25,
+      166,
+      'Promenade_Concourse_Straight'
+    )
+
+    DistrictHelper.registerBoxCollider(
+      collisionSystem,
+      -20,
+      0.125,
+      -123,
+      12,
+      0.25,
+      10,
+      'Promenade_Belvedere_Platform'
+    )
+
+    // Belvedere Southern Steps down to natural sand dunes at Z = -128.0 (2 steps, Y: 0.10m to 0.25m)
+    DistrictHelper.addStairs(
+      this.group,
+      collisionSystem,
+      materials,
+      -20.0,
+      0.0,
+      -128.0,
+      3.2,
+      0.25,
+      2.0,
+      2,
+      'Z-',
+      materials.getTimberWoodMaterial(),
+      'Belvedere_South_Stairs'
+    )
+
+    // 1c. Modular Stone Balustrade / Railing System (Along seaward edge X: -23.8, strictly terminating at Z: 44)
+    // Legacy segment 'Promenade_Railing_NorthEnd' (Z: 56 to 110) is completely removed to eliminate conflict with Fishing Harbour Assets 7-9.
+    // Four planned access openings:
+    // - Central Grand Beach Stairway opening: Z in [-6, 6] (12m opening)
+    // - South Beach access opening: Z in [-43, -37] (6m opening)
+    // - North Beach access opening: Z in [17, 23] (6m opening)
+    // - North Harbour Road access opening: Z in [44, 56] (12m opening for harbour connection)
     const railingSegments: [number, number, string][] = [
-      [-76.5, 67, 'Promenade_Railing_SouthEnd'], // Z: -110 to -43 (length 67)
-      [-21.5, 31, 'Promenade_Railing_MidSouth'], // Z: -37 to -6 (length 31)
-      [11.5, 11, 'Promenade_Railing_MidNorth'],  // Z: 6 to 17 (length 11)
-      [33.5, 21, 'Promenade_Railing_HarbourSouth'], // Z: 23 to 44 (length 21)
-      [83.0, 54, 'Promenade_Railing_NorthEnd'],  // Z: 56 to 110 (length 54)
+      [-82.5, 79, 'Promenade_Railing_SouthEnd'],    // Z: -122 to -43 (length 79m)
+      [-21.5, 31, 'Promenade_Railing_MidSouth'],    // Z: -37 to -6 (length 31m)
+      [11.5, 11, 'Promenade_Railing_MidNorth'],     // Z: 6 to 17 (length 11m)
+      [33.5, 21, 'Promenade_Railing_HarbourSouth'], // Z: 23 to 44 (length 21m)
     ]
 
+    const balustradeGeos: THREE.BufferGeometry[] = []
+
     for (const [cz, len, colName] of railingSegments) {
-      const railSeg = new THREE.Mesh(materials.boxGeometry, railingMat)
-      railSeg.scale.set(0.4, 0.9, len)
-      railSeg.position.set(-23.8, 0.7, cz)
-      railSeg.castShadow = true
-      this.group.add(railSeg)
+      const railGeo = new THREE.BoxGeometry(0.4, 0.9, len)
+      railGeo.translate(-23.8, 0.7, cz)
+      balustradeGeos.push(railGeo)
 
       DistrictHelper.registerBoxCollider(
         collisionSystem,
@@ -56,19 +104,75 @@ export class RoadNetwork {
       )
     }
 
-    // Decorative balustrade end pillars at each pedestrian and road opening
-    const openingPillars = [-43, -37, -6, 6, 17, 23, 44, 56]
-    for (let p = 0; p < openingPillars.length; p++) {
-      const pz = openingPillars[p]
-      const pillar = new THREE.Mesh(materials.boxGeometry, railingMat)
-      pillar.scale.set(0.65, 1.15, 0.65)
-      pillar.position.set(-23.8, 0.75, pz)
-      pillar.castShadow = true
-      this.group.add(pillar)
+    // Belvedere Curved Perimeter Railing (following the 6m radius arc around X: -20, Z: -122, leaving south stairs open)
+    const belvedereRailAngles = [
+      Math.PI * 0.55,
+      Math.PI * 0.75,
+      Math.PI * 0.95,
+      Math.PI * 1.15,
+      Math.PI * 1.35,
+    ]
+    for (let a = 0; a < belvedereRailAngles.length; a++) {
+      const ang = belvedereRailAngles[a]
+      const rx = -20 + Math.cos(ang) * 5.8
+      const rz = -122 + Math.sin(ang) * 5.8
+      const railArcGeo = new THREE.BoxGeometry(0.4, 0.9, 2.8)
+      railArcGeo.rotateY(-ang + Math.PI / 2)
+      railArcGeo.translate(rx, 0.7, rz)
+      balustradeGeos.push(railArcGeo)
 
       DistrictHelper.registerBoxCollider(
         collisionSystem,
-        -23.8,
+        rx,
+        0.7,
+        rz,
+        1.2,
+        1.1,
+        2.8,
+        `Promenade_Belvedere_Railing_${a}`
+      )
+    }
+
+    const mergedBalustradeGeo = BufferGeometryUtils.mergeGeometries(balustradeGeos)
+    if (mergedBalustradeGeo) {
+      const balustradeMesh = new THREE.Mesh(mergedBalustradeGeo, railingMat)
+      balustradeMesh.castShadow = true
+      this.group.add(balustradeMesh)
+    }
+
+    // 1d. Decorative Stone Gate Pillars & Brass Maritime Lanterns at Openings
+    const pillarPositions: [number, number][] = [
+      [-23.8, -43], // South opening south edge
+      [-23.8, -37], // South opening north edge
+      [-23.8, -6],  // Grand stairs south edge
+      [-23.8, 6],   // Grand stairs north edge
+      [-23.8, 17],  // North opening south edge
+      [-23.8, 23],  // North opening north edge
+      [-23.8, 44],  // Harbour road entrance corner (north terminus of railing)
+      [-21.8, -128], // Belvedere south stair west edge
+      [-18.2, -128], // Belvedere south stair east edge
+    ]
+
+    const pillarGeos: THREE.BufferGeometry[] = []
+    const lanternGeos: THREE.BufferGeometry[] = []
+
+    for (let p = 0; p < pillarPositions.length; p++) {
+      const [px, pz] = pillarPositions[p]
+      const pGeo = new THREE.BoxGeometry(0.65, 1.15, 0.65)
+      pGeo.translate(px, 0.75, pz)
+      pillarGeos.push(pGeo)
+
+      const lBase = new THREE.BoxGeometry(0.24, 0.22, 0.24)
+      lBase.translate(px, 1.42, pz)
+      pillarGeos.push(lBase)
+
+      const lGlass = new THREE.SphereGeometry(0.12, 8, 8)
+      lGlass.translate(px, 1.58, pz)
+      lanternGeos.push(lGlass)
+
+      DistrictHelper.registerBoxCollider(
+        collisionSystem,
+        px,
         0.75,
         pz,
         0.7,
@@ -76,6 +180,25 @@ export class RoadNetwork {
         0.7,
         `Promenade_Gate_Pillar_${p}`
       )
+    }
+
+    const mergedPillars = BufferGeometryUtils.mergeGeometries(pillarGeos)
+    if (mergedPillars) {
+      const pillarMesh = new THREE.Mesh(mergedPillars, railingMat)
+      pillarMesh.castShadow = true
+      this.group.add(pillarMesh)
+    }
+
+    const lanternMat = new THREE.MeshStandardMaterial({
+      color: 0xfffaed,
+      emissive: 0xffd166,
+      emissiveIntensity: 2.0,
+      roughness: 0.1,
+    })
+    const mergedLanterns = BufferGeometryUtils.mergeGeometries(lanternGeos)
+    if (mergedLanterns) {
+      const lanternMesh = new THREE.Mesh(mergedLanterns, lanternMat)
+      this.group.add(lanternMesh)
     }
 
     // 2. Main Coastal Boulevard (North-South 2-lane road parallel to promenade, X: -10, Z: -110 to 110)
@@ -105,12 +228,77 @@ export class RoadNetwork {
     centralSideSouth.receiveShadow = true
     this.group.add(centralSideSouth)
 
+    // Central Boulevard Zebra Crosswalk & Promenade Curb Ramp (linking Town Centre Plaza to Promenade)
+    const crosswalkWhiteMat = materials.getColorMaterial(0xf8f9fa, 0.9, 0.0)
+    const zebraGeos: THREE.BufferGeometry[] = []
+    for (let s = 0; s < 8; s++) {
+      const zStrip = -2.625 + s * 0.75
+      const stripeGeo = new THREE.BoxGeometry(11.0, 0.005, 0.40)
+      stripeGeo.translate(-10.0, 0.052, zStrip)
+      zebraGeos.push(stripeGeo)
+    }
+    const mergedZebra = BufferGeometryUtils.mergeGeometries(zebraGeos)
+    if (mergedZebra) {
+      const zebraMesh = new THREE.Mesh(mergedZebra, crosswalkWhiteMat)
+      zebraMesh.receiveShadow = true
+      this.group.add(zebraMesh)
+    }
+
+    // Beveled transition curb ramp at X: -16.0 stepping from road (Y = 0.05m) to promenade (Y = 0.25m)
+    const crosswalkRamp = new THREE.Mesh(materials.boxGeometry, sidewalkMat)
+    crosswalkRamp.scale.set(1.0, 0.20, 6.0)
+    crosswalkRamp.position.set(-15.5, 0.15, 0)
+    crosswalkRamp.receiveShadow = true
+    this.group.add(crosswalkRamp)
+
+    DistrictHelper.registerBoxCollider(
+      collisionSystem,
+      -15.5,
+      0.15,
+      0,
+      1.0,
+      0.20,
+      6.0,
+      'Central_Crosswalk_Curb_Ramp'
+    )
+
     // 4. North Harbour Access Road (X: -10 to -34, Z: 50, width: 10m)
     const harbourRoad = new THREE.Mesh(materials.boxGeometry, roadMat)
     harbourRoad.scale.set(24, 0.05, 10)
     harbourRoad.position.set(-22, 0.027, 50)
     harbourRoad.receiveShadow = true
     this.group.add(harbourRoad)
+
+    // Flanking pedestrian sidewalks along North Harbour Access Road
+    const harbourSideNorth = new THREE.Mesh(materials.boxGeometry, sidewalkMat)
+    harbourSideNorth.scale.set(24, 0.15, 1.5)
+    harbourSideNorth.position.set(-22, 0.075, 55.75)
+    harbourSideNorth.receiveShadow = true
+    this.group.add(harbourSideNorth)
+
+    const harbourSideSouth = new THREE.Mesh(materials.boxGeometry, sidewalkMat)
+    harbourSideSouth.scale.set(24, 0.15, 1.5)
+    harbourSideSouth.position.set(-22, 0.075, 44.25)
+    harbourSideSouth.receiveShadow = true
+    this.group.add(harbourSideSouth)
+
+    // Beveled transition ramp at X: -34 stepping from road (Y = 0.05m) onto Harbour Wharf deck (Y = 0.40m)
+    const harbourWharfRamp = new THREE.Mesh(materials.boxGeometry, materials.getTimberWoodMaterial())
+    harbourWharfRamp.scale.set(1.6, 0.20, 10.0)
+    harbourWharfRamp.position.set(-34.2, 0.20, 50)
+    harbourWharfRamp.receiveShadow = true
+    this.group.add(harbourWharfRamp)
+
+    DistrictHelper.registerBoxCollider(
+      collisionSystem,
+      -34.2,
+      0.20,
+      50,
+      1.6,
+      0.20,
+      10.0,
+      'Harbour_Road_Wharf_Ramp'
+    )
 
     // 5. Market Connector Street (X: 10 to 38, Z: 20, width: 9m)
     const marketRoad = new THREE.Mesh(materials.boxGeometry, roadMat)
@@ -176,34 +364,89 @@ export class RoadNetwork {
     resSouthSideS.receiveShadow = true
     this.group.add(resSouthSideS)
 
-    // 9. Promenade Ocean-Facing Benches & Streetlamps
-    for (let z = -90; z <= 90; z += 24) {
-      // Skip bench if within or near pedestrian beach access openings
-      const nearOpening =
-        Math.abs(z) <= 8 || (z >= -46 && z <= -34) || (z >= 14 && z <= 26)
-      if (!nearOpening) {
-        DistrictHelper.addPromenadeBench(
-          this.group,
-          collisionSystem,
-          -22.5,
-          0.25,
-          z,
-          Math.PI / 2,
-          `Promenade_Bench_${z}`
-        )
-      }
+    // 9. Coastal Marine Promenade Street Furnishings: 8 Benches, 8 Streetlamps, 6 Planters & 2 Foot-Wash Stations
+    // 9a. 8 Promenade Heritage Teak Benches (Facing ocean Westward at Y = 0.25m)
+    const promenadeBenches: [number, number, number, number, string][] = [
+      [-24.5, 0.25, -122.0, Math.PI / 2, 'Promenade_Bench_Belvedere'],
+      [-22.5, 0.25, -100.0, Math.PI / 2, 'Promenade_Bench_South_1'],
+      [-22.5, 0.25, -75.0,  Math.PI / 2, 'Promenade_Bench_South_2'],
+      [-22.5, 0.25, -55.0,  Math.PI / 2, 'Promenade_Bench_Mid_1'],
+      [-22.5, 0.25, -25.0,  Math.PI / 2, 'Promenade_Bench_Mid_2'],
+      [-22.5, 0.25, -15.0,  Math.PI / 2, 'Promenade_Bench_Mid_3'],
+      [-22.5, 0.25, 11.5,   Math.PI / 2, 'Promenade_Bench_North_1'],
+      [-22.5, 0.25, 33.5,   Math.PI / 2, 'Promenade_Bench_Harbour'],
+    ]
+    for (const [bx, by, bz, rotY, bName] of promenadeBenches) {
+      DistrictHelper.addPromenadeBench(this.group, collisionSystem, bx, by, bz, rotY, bName)
+    }
 
-      // Promenade Streetlamp
+    // 9b. 8 Coastal Victorian Streetlamps along Promenade Landward Curb (X: -16.5, Y: 0.25m)
+    const promenadeLamps: [number, number, string][] = [
+      [-16.5, -120.0, 'Promenade_Lamp_Belvedere'],
+      [-16.5, -95.0,  'Promenade_Lamp_South_1'],
+      [-16.5, -70.0,  'Promenade_Lamp_South_2'],
+      [-16.5, -45.0,  'Promenade_Lamp_Mid_1'],
+      [-16.5, -20.0,  'Promenade_Lamp_Mid_2'],
+      [-16.5, 12.0,   'Promenade_Lamp_North_1'],
+      [-16.5, 28.0,   'Promenade_Lamp_North_2'],
+      [-16.5, 42.0,   'Promenade_Lamp_Harbour'],
+    ]
+    for (const [lx, lz, lName] of promenadeLamps) {
       DistrictHelper.addStreetLamp(
         this.group,
         collisionSystem,
         materials,
-        -16.5,
-        z + 12,
+        lx,
+        lz,
         5.2,
-        `Promenade_Lamp_${z}`
+        lName,
+        0.25
       )
     }
+
+    // 9c. 6 Terrazzo Planters with Coastal Ornamental Flora (X: -18.5, Y: 0.25m)
+    const promenadePlanters: [number, number, string][] = [
+      [-18.5, -110.0, 'Promenade_Planter_1'],
+      [-18.5, -85.0,  'Promenade_Planter_2'],
+      [-18.5, -60.0,  'Promenade_Planter_3'],
+      [-18.5, -30.0,  'Promenade_Planter_4'],
+      [-18.5, 8.0,    'Promenade_Planter_5'],
+      [-18.5, 38.0,   'Promenade_Planter_6'],
+    ]
+    for (const [px, pz, pName] of promenadePlanters) {
+      DistrictHelper.addBlenderPlanter(
+        this.group,
+        collisionSystem,
+        px,
+        pz,
+        0,
+        pName,
+        0.25
+      )
+    }
+
+    // 9d. 2 Public Foot-Wash Stations (near beach stair access points)
+    DistrictHelper.addFootWashStation(
+      this.group,
+      collisionSystem,
+      materials,
+      -22.5,
+      0.25,
+      7.5,
+      Math.PI / 2,
+      'Foot_Wash_Central'
+    )
+
+    DistrictHelper.addFootWashStation(
+      this.group,
+      collisionSystem,
+      materials,
+      -22.5,
+      0.25,
+      -35.5,
+      Math.PI / 2,
+      'Foot_Wash_South'
+    )
 
     // Streetlamps along Main Coastal Boulevard (East side of road at X: -3.5)
     for (let z = -100; z <= 100; z += 30) {
