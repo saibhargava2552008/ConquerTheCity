@@ -1,4 +1,5 @@
 import * as THREE from 'three'
+import * as BufferGeometryUtils from 'three/examples/jsm/utils/BufferGeometryUtils.js'
 import type { MaterialFactory } from '../MaterialFactory'
 import type { CollisionSystem } from '../../physics/CollisionSystem'
 import { DistrictHelper } from './DistrictHelper'
@@ -262,7 +263,7 @@ export class RoadNetwork {
     this.buildRoadMarkings(materials)
   }
 
-  private buildRoadMarkings(materials: MaterialFactory): void {
+  private buildRoadMarkings(_materials: MaterialFactory): void {
     const whiteMat = new THREE.MeshStandardMaterial({
       color: 0xf8f9fa,
       roughness: 0.45,
@@ -281,88 +282,106 @@ export class RoadNetwork {
 
     const Y_MARKING = 0.038 // Elevated above road level (0.025m) to ensure sharp visibility without z-fighting
 
+    const whiteGeos: THREE.BufferGeometry[] = []
+    const yellowGeos: THREE.BufferGeometry[] = []
+    const grateGeos: THREE.BufferGeometry[] = []
+
+    const addBox = (
+      list: THREE.BufferGeometry[],
+      sx: number,
+      sy: number,
+      sz: number,
+      px: number,
+      py: number,
+      pz: number
+    ) => {
+      const geo = new THREE.BoxGeometry(sx, sy, sz)
+      geo.translate(px, py, pz)
+      list.push(geo)
+    }
+
     // A. White Dashed Centerlines
     // 1. Coastal Boulevard North-South Dashed Centerline (X: -10, Z: -105 to 105)
     for (let z = -105; z <= 105; z += 6.0) {
-      // Skip intersections
       if (Math.abs(z) < 14 || (z >= 44 && z <= 56) || (z <= -44 && z >= -56)) continue
-      const dash = new THREE.Mesh(materials.boxGeometry, whiteMat)
-      dash.scale.set(0.18, 0.01, 3.2)
-      dash.position.set(-10, Y_MARKING, z)
-      this.group.add(dash)
+      addBox(whiteGeos, 0.18, 0.01, 3.2, -10, Y_MARKING, z)
     }
 
     // 2. Central Boulevard East-West Dashed Centerline (Z: 0, X: 5 to 88)
     for (let x = 6; x <= 86; x += 6.0) {
-      // Skip Town Centre plaza intersection (X < 16)
       if (x < 16) continue
-      const dash = new THREE.Mesh(materials.boxGeometry, whiteMat)
-      dash.scale.set(3.2, 0.01, 0.18)
-      dash.position.set(x, Y_MARKING, 0)
-      this.group.add(dash)
+      addBox(whiteGeos, 3.2, 0.01, 0.18, x, Y_MARKING, 0)
     }
 
     // 3. Residential Connector Dashed Centerline (X: 12, Z: -12 to -46)
     for (let z = -12; z >= -46; z -= 5.0) {
-      const dash = new THREE.Mesh(materials.boxGeometry, whiteMat)
-      dash.scale.set(0.18, 0.01, 2.6)
-      dash.position.set(12, Y_MARKING, z)
-      this.group.add(dash)
+      addBox(whiteGeos, 0.18, 0.01, 2.6, 12, Y_MARKING, z)
     }
 
     // B. Solid White Edge Lines
-    // Coastal Boulevard West and East Edge Lines
     const edgeLength = 80
     for (const zCenter of [-60, 60]) {
       for (const xEdge of [-15.2, -4.8]) {
-        const edgeLine = new THREE.Mesh(materials.boxGeometry, whiteMat)
-        edgeLine.scale.set(0.15, 0.01, edgeLength)
-        edgeLine.position.set(xEdge, Y_MARKING, zCenter)
-        this.group.add(edgeLine)
+        addBox(whiteGeos, 0.15, 0.01, edgeLength, xEdge, Y_MARKING, zCenter)
       }
     }
 
-    // Central Boulevard North and South Edge Lines
     for (const zEdge of [-5.2, 5.2]) {
-      const edgeLine = new THREE.Mesh(materials.boxGeometry, whiteMat)
-      edgeLine.scale.set(70, 0.01, 0.15)
-      edgeLine.position.set(52, Y_MARKING, zEdge)
-      this.group.add(edgeLine)
+      addBox(whiteGeos, 70, 0.01, 0.15, 52, Y_MARKING, zEdge)
     }
 
     // C. Realistic Zebra Pedestrian Crossings
-    // 1. Coastal Boulevard Grand Central Crossing (Z: 0, between Promenade and Central Plaza)
-    this.createZebraCrossing(materials, whiteMat, -10, 0, 10.4, 3.2, false)
-
-    // 2. Coastal Boulevard South Crossing (Z: -40)
-    this.createZebraCrossing(materials, whiteMat, -10, -40, 10.4, 2.8, false)
-
-    // 3. Coastal Boulevard North Crossing (Z: 20, Market Access)
-    this.createZebraCrossing(materials, whiteMat, -10, 20, 10.4, 2.8, false)
-
-    // 4. Central Boulevard East Crossing (X: 18, Town Centre Plaza exit)
-    this.createZebraCrossing(materials, whiteMat, 18, 0, 10.4, 3.0, true)
+    this.appendZebraCrossing(whiteGeos, -10, 0, 10.4, 3.2, false)
+    this.appendZebraCrossing(whiteGeos, -10, -40, 10.4, 2.8, false)
+    this.appendZebraCrossing(whiteGeos, -10, 20, 10.4, 2.8, false)
+    this.appendZebraCrossing(whiteGeos, 18, 0, 10.4, 3.0, true)
 
     // D. Yellow Curb Loading Zones
     for (const zCurb of [-28, 32]) {
-      const yellowStripe = new THREE.Mesh(materials.boxGeometry, yellowMat)
-      yellowStripe.scale.set(0.2, 0.01, 8.0)
-      yellowStripe.position.set(-4.2, Y_MARKING, zCurb)
-      this.group.add(yellowStripe)
+      addBox(yellowGeos, 0.2, 0.01, 8.0, -4.2, Y_MARKING, zCurb)
     }
 
     // E. Storm Drain Grates along Boulevard Gutter Curbs
     for (const zGrate of [-80, -50, -20, 20, 50, 80]) {
-      const grate = new THREE.Mesh(materials.boxGeometry, drainGrateMat)
-      grate.scale.set(0.85, 0.02, 0.55)
-      grate.position.set(-4.3, Y_MARKING, zGrate)
-      this.group.add(grate)
+      addBox(grateGeos, 0.85, 0.02, 0.55, -4.3, Y_MARKING, zGrate)
+    }
+
+    // Merge all white road markings into 1 mesh
+    if (whiteGeos.length > 0) {
+      const mergedWhite = BufferGeometryUtils.mergeGeometries(whiteGeos, false)
+      if (mergedWhite) {
+        const whiteMesh = new THREE.Mesh(mergedWhite, whiteMat)
+        whiteMesh.receiveShadow = true
+        whiteMesh.castShadow = false
+        this.group.add(whiteMesh)
+      }
+    }
+
+    // Merge all yellow road markings into 1 mesh
+    if (yellowGeos.length > 0) {
+      const mergedYellow = BufferGeometryUtils.mergeGeometries(yellowGeos, false)
+      if (mergedYellow) {
+        const yellowMesh = new THREE.Mesh(mergedYellow, yellowMat)
+        yellowMesh.receiveShadow = true
+        yellowMesh.castShadow = false
+        this.group.add(yellowMesh)
+      }
+    }
+
+    // Merge all storm drain grates into 1 mesh
+    if (grateGeos.length > 0) {
+      const mergedGrates = BufferGeometryUtils.mergeGeometries(grateGeos, false)
+      if (mergedGrates) {
+        const grateMesh = new THREE.Mesh(mergedGrates, drainGrateMat)
+        grateMesh.receiveShadow = true
+        grateMesh.castShadow = false
+        this.group.add(grateMesh)
+      }
     }
   }
 
-  private createZebraCrossing(
-    materials: MaterialFactory,
-    mat: THREE.Material,
+  private appendZebraCrossing(
+    geoList: THREE.BufferGeometry[],
     cx: number,
     cz: number,
     roadSpan: number,
@@ -377,17 +396,13 @@ export class RoadNetwork {
 
     for (let i = 0; i < numStripes; i++) {
       const offset = startOffset + i * step
-      const stripe = new THREE.Mesh(materials.boxGeometry, mat)
-      if (isAcrossEW) {
-        // Road runs East-West, crossing runs North-South, stripes run East-West
-        stripe.scale.set(stripeLength, 0.01, stripeWidth)
-        stripe.position.set(cx, 0.038, cz + offset)
-      } else {
-        // Road runs North-South, crossing runs East-West, stripes run North-South
-        stripe.scale.set(stripeWidth, 0.01, stripeLength)
-        stripe.position.set(cx + offset, 0.038, cz)
-      }
-      this.group.add(stripe)
+      const sx = isAcrossEW ? stripeLength : stripeWidth
+      const sz = isAcrossEW ? stripeWidth : stripeLength
+      const px = isAcrossEW ? cx : cx + offset
+      const pz = isAcrossEW ? cz + offset : cz
+      const geo = new THREE.BoxGeometry(sx, 0.01, sz)
+      geo.translate(px, 0.038, pz)
+      geoList.push(geo)
     }
   }
 

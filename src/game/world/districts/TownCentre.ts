@@ -162,6 +162,7 @@ export class TownCentre {
       0,
       1.0,
       () => {
+        this.group.remove(proceduralLighthouse)
         proceduralLighthouse.visible = false
       }
     )

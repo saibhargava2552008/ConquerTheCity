@@ -174,8 +174,8 @@ export class Engine {
       // Update camera follow to track player's new position
       this.thirdPersonCamera.update(playerStats.position, dt)
 
-      // Update environmental world animations (ocean waves, lighthouse beacon)
-      this.seaviewTown.update(dt)
+      // Update environmental world animations (ocean waves, lighthouse beacon, living market)
+      this.seaviewTown.update(dt, playerStats.position)
 
       // Update directional light & shadow coverage
       this.skyAndLighting.update(playerStats.position)

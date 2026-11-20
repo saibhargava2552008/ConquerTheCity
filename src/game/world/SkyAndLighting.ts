@@ -36,8 +36,8 @@ export class SkyAndLighting {
     this.dirLight.shadow.camera.near = 1.0
     this.dirLight.shadow.camera.far = 170
 
-    // Tight shadow frustum following player to maximize texel resolution
-    const d = 42
+    // Crisp, focused shadow frustum following player (56m x 56m)
+    const d = 28
     this.dirLight.shadow.camera.left = -d
     this.dirLight.shadow.camera.right = d
     this.dirLight.shadow.camera.top = d

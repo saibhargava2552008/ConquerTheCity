@@ -53,20 +53,15 @@ export class ResidentialDistrict {
       'S'
     )
 
-    // House 2: "Neelam Cottage" (Seafoam Pastel)
-    DistrictHelper.addCoastalHouse(
+    // House 2: "Coastal Residence ArchViz" (Blender 5.3 Production Asset)
+    DistrictHelper.addBlenderCoastalResidence(
       this.group,
       collisionSystem,
       materials,
       45,
       -30,
-      12,
-      12,
-      4.2,
-      '#81b29a',
-      true,
-      'Cottage_Neelam',
-      'S'
+      'S',
+      'Coastal_Residence_ArchViz'
     )
 
     // House 3: "Sandalwood Villa" (Warm Ochre)

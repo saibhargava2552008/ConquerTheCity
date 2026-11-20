@@ -162,6 +162,21 @@ async function runWorldAccessibilityAudit() {
       targetDesc: 'Warehouse interior concrete floor at Y = 1.2m',
     },
     {
+      name: "Fishing Harbour - Fishermen's Cooperative Veranda & Reception",
+      category: 'Fishing Harbour',
+      waypoints: [
+        [-38.5, 0.4, 70],
+        [-35.0, 0.4, 85], // Wharf boardwalk east of boat slips
+        [-34.0, 0.4, 96], // Wharf path in front of Fish Auction Pavilion
+        [-34.0, 0.4, 114], // Approach aligned with Cooperative central portal
+        [-31.0, 0.4, 114], // Shaded front veranda through steps
+        [-29.0, 0.4, 114], // Veranda floor between Pillar 1 & 2
+        [-27.5, 0.4, 114], // Front entrance portal
+        [-25.5, 0.4, 114], // Main reception and transaction hall
+      ],
+      targetDesc: "Fishermen's Cooperative interior reception & counter at Y = 0.4m",
+    },
+    {
       name: 'Market District - Bazaar Pedestrian Street',
       category: 'Market District',
       waypoints: [
@@ -183,6 +198,28 @@ async function runWorldAccessibilityAudit() {
         [31.4, 0.35, 52], // Shop veranda plinth between pillars
       ],
       targetDesc: 'Walkable shop veranda plinth and stall aisle',
+    },
+    {
+      name: 'Market District - Blender Commercial Arcade Colonnade Gallery',
+      category: 'Market District',
+      waypoints: [
+        [38, 0.05, 34.5], // Central Bazaar Street
+        [46, 0.05, 34.5], // East sidewalk arcade approach (North Archway)
+        [49, 0.17, 34.5], // Step onto arcade curb ramp
+        [50.5, 0.35, 34.5], // Covered colonnade gallery in front of retail shopfronts
+      ],
+      targetDesc: 'Walkable covered colonnade gallery of Blender Commercial Arcade at Y = 0.35m',
+    },
+    {
+      name: 'Market District - Blender Indian Street Shop Cluster Plinth',
+      category: 'Market District',
+      waypoints: [
+        [38, 0.05, 33.5], // Central Bazaar Street
+        [30, 0.05, 33.5], // West sidewalk in front of Kirana store
+        [26.3, 0.15, 33.5], // Step onto shop cluster curb step ramp at Y = 0.15m
+        [24.8, 0.30, 33.5], // Walkable plinth walkway in front of Kirana grocery counter at Y = 0.30m
+      ],
+      targetDesc: 'Walkable front plinth walkway of Blender Indian Street Shop Cluster at Y = 0.30m',
     },
     {
       name: 'Residential District - Avenue via Connector Boulevard',
@@ -208,6 +245,21 @@ async function runWorldAccessibilityAudit() {
         [25, 0.35, -37.4], // Veranda plinth
       ],
       targetDesc: 'Villa Gulmohar veranda plinth through compound gate',
+    },
+    {
+      name: 'Residential District - Blender Coastal Residence Veranda',
+      category: 'Residential District',
+      waypoints: [
+        [45, 0.05, -50], // Central Residential Avenue
+        [45, 0.05, -43.75], // Sidewalk
+        [45, 0.05, -41.0], // Compound gateway
+        [45, 0.05, -39.0], // Courtyard front
+        [45, 0.20, -38.65], // Step 3
+        [45, 0.40, -38.30], // Step 2
+        [45, 0.60, -37.95], // Step 1
+        [45, 0.60, -36.5], // Elevated Veranda under Tuscan columns
+      ],
+      targetDesc: 'Blender Coastal Residence elevated veranda via entrance steps',
     },
     {
       name: 'Countryside Outpost - Highway Lanes & Cabin Interior',

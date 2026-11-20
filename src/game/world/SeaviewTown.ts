@@ -98,9 +98,10 @@ export class SeaviewTown {
   /**
    * Continuous environmental simulation (ocean wave drift, revolving lighthouse beacon)
    */
-  public update(dt: number): void {
+  public update(dt: number, playerPos?: THREE.Vector3): void {
     this.beachDistrict.updateWater(dt)
     this.townCentre.updateBeacon(dt)
+    this.marketDistrict.update(dt, playerPos)
   }
 
   public dispose(): void {

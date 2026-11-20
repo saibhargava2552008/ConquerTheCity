@@ -241,15 +241,15 @@ export class CountrysideEdge {
       'Perimeter_East_Ridge'
     )
 
-    // North perimeter hill ridge (Z: 118)
+    // North perimeter hill ridge (Z: 118, bounding town edge East of Coastal Boulevard at X: -10)
     DistrictHelper.addStaticBox(
       this.group,
       collisionSystem,
       materials,
-      45,
+      60,
       5.0,
       118,
-      170,
+      140,
       10.0,
       12.0,
       hillMat,
