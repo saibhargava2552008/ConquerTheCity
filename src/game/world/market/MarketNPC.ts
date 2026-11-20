@@ -1,6 +1,7 @@
 import * as THREE from 'three'
 import type { GLTF } from 'three/examples/jsm/loaders/GLTFLoader.js'
 import * as SkeletonUtils from 'three/examples/jsm/utils/SkeletonUtils.js'
+import type { CollisionSystem } from '../../physics/CollisionSystem'
 
 export type NPCRole = 'pedestrian' | 'shopkeeper' | 'chai_wallah' | 'chai_customer'
 export type NPCArchetype = 'aarav' | 'ananya'
@@ -50,14 +51,16 @@ export class MarketNPC {
   private distanceToPlayer = 0
   private isDormant = false
   private isShadowCasting = true
+  private collisionSystem?: CollisionSystem
 
-  constructor(config: NPCConfig, gltfTemplate: GLTF) {
+  constructor(config: NPCConfig, gltfTemplate: GLTF, collisionSystem?: CollisionSystem) {
     this.id = config.id
     this.name = config.name
     this.role = config.role
     this.position = config.spawnPosition.clone()
     this.facingAngle = config.facingAngle
     this.patrolSpeed = config.patrolSpeed ?? 1.25
+    this.collisionSystem = collisionSystem
 
     if (config.waypoints && config.waypoints.length > 0) {
       this.waypoints = config.waypoints.map(w => w.clone())
@@ -227,10 +230,17 @@ export class MarketNPC {
       if (other === this) continue
       const dist = this.position.distanceTo(other.position)
       if (dist < 1.1) {
-        // Small lateral nudge
+        // Small lateral nudge with collision barrier respect
         const nudge = this.position.clone().sub(other.position).normalize().multiplyScalar(0.2 * dt)
-        this.position.x += nudge.x
-        this.position.z += nudge.z
+        const nudgedX = this.position.x + nudge.x
+        const nudgedZ = this.position.z + nudge.z
+        if (
+          !this.collisionSystem ||
+          !this.collisionSystem.isPositionBlocked(nudgedX, this.position.y, nudgedZ, 0.35, 1.8)
+        ) {
+          this.position.x = nudgedX
+          this.position.z = nudgedZ
+        }
       }
     }
 
@@ -265,11 +275,40 @@ export class MarketNPC {
       return
     }
 
-    // Step forward along path
+    // Step forward along path with collision-aware resolution
     toTarget.normalize()
     const moveStep = this.patrolSpeed * dt
-    this.position.x += toTarget.x * moveStep
-    this.position.z += toTarget.z * moveStep
+    const nextX = this.position.x + toTarget.x * moveStep
+    const nextZ = this.position.z + toTarget.z * moveStep
+
+    if (this.collisionSystem) {
+      // Test if next position collides with building or obstacle
+      const blocked = this.collisionSystem.isPositionBlocked(nextX, this.position.y, nextZ, 0.35, 1.8)
+      if (!blocked) {
+        this.position.x = nextX
+        this.position.z = nextZ
+      } else {
+        // Try axis-separated sliding (e.g. wall along X or Z)
+        const blockedX = this.collisionSystem.isPositionBlocked(nextX, this.position.y, this.position.z, 0.35, 1.8)
+        const blockedZ = this.collisionSystem.isPositionBlocked(this.position.x, this.position.y, nextZ, 0.35, 1.8)
+        if (!blockedX) {
+          this.position.x = nextX
+        } else if (!blockedZ) {
+          this.position.z = nextZ
+        } else {
+          // Both axes blocked: yield and turn around
+          this.pauseTimer = 1.0
+          this.playAction('idle', 0.2)
+        }
+      }
+
+      // Keep NPC naturally grounded on sidewalks / plinths
+      const groundH = this.collisionSystem.getGroundHeight(this.position.x, this.position.y, this.position.z, 0.35)
+      this.position.y = groundH
+    } else {
+      this.position.x = nextX
+      this.position.z = nextZ
+    }
 
     // Smoothly turn to face movement vector
     const targetAngle = Math.atan2(toTarget.x, toTarget.z)
@@ -338,6 +377,10 @@ export class MarketNPC {
         this.playAction('idle', 0.3)
       }
     }
+  }
+
+  public getPosition(): THREE.Vector3 {
+    return this.position
   }
 
   public dispose(): void {

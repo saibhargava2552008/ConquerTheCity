@@ -7,15 +7,17 @@ import { Player, type CharacterId } from '../entities/Player'
 import { PlayerController } from '../entities/PlayerController'
 import { ThirdPersonCamera } from '../camera/ThirdPersonCamera'
 import { InputManager } from '../input/InputManager'
+import { InteractionManager } from '../interaction/InteractionManager'
 import { MissionSystem } from '../systems/MissionSystem'
 import type { MissionEvents } from '../systems/MissionSystem'
 import { EventEmitter } from './EventEmitter'
-import type { EngineStats, PlayerStats } from './Types'
+import type { EngineStats, PlayerStats, InteractionPrompt } from './Types'
 
 export type EngineEvents = MissionEvents & {
   stats: EngineStats
   playerStats: PlayerStats
   pointerLockChange: boolean
+  interactionPrompt: InteractionPrompt
 }
 
 export class Engine {
@@ -34,6 +36,7 @@ export class Engine {
   public readonly playerController: PlayerController
   public readonly thirdPersonCamera: ThirdPersonCamera
   public readonly inputManager: InputManager
+  public readonly interactionManager: InteractionManager
   public readonly missionSystem: MissionSystem
 
   private animationId = 0
@@ -89,7 +92,7 @@ export class Engine {
     // 5. Player Entity & Controller
     this.player = new Player(this.characterId)
     // Spawn player in Seaview Town Centre Plaza facing North toward the Lighthouse
-    this.player.setPosition(0, 0, 8)
+    this.player.setPosition(0, 0.35, 8)
     this.scene.add(this.player.mesh)
 
     this.playerController = new PlayerController(this.player, this.collisionSystem)
@@ -103,7 +106,13 @@ export class Engine {
       this.events.emit('pointerLockChange', locked)
     })
 
-    // 8. Mission System
+    // 8. Interaction System
+    this.interactionManager = new InteractionManager()
+    this.interactionManager.events.on('promptChanged', prompt => {
+      this.events.emit('interactionPrompt', prompt)
+    })
+
+    // 9. Mission System
     this.missionSystem = new MissionSystem(this.events as unknown as EventEmitter<MissionEvents>)
 
     // 9. Resize Handling
@@ -183,6 +192,9 @@ export class Engine {
       // Update missions / objectives
       this.missionSystem.update(playerStats.position)
 
+      // Update interaction system with proximity detection and KeyF interact input
+      this.interactionManager.update(playerStats.position, input.interact, this.player)
+
       // Render 3D scene
       this.renderer.render(this.scene, this.camera)
 
@@ -226,6 +238,7 @@ export class Engine {
     }
 
     this.inputManager.dispose()
+    this.interactionManager.dispose()
     this.seaviewTown.dispose()
     this.skyAndLighting.dispose()
     this.player.dispose()

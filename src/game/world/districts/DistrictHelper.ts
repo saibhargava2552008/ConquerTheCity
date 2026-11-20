@@ -1,6 +1,7 @@
 import * as THREE from 'three'
 import type { MaterialFactory } from '../MaterialFactory'
 import type { CollisionSystem } from '../../physics/CollisionSystem'
+import type { SurfaceType, ColliderType } from '../../core/Types'
 import { AssetLoader } from '../AssetLoader'
 
 /**
@@ -15,7 +16,9 @@ export class DistrictHelper {
     sx: number,
     sy: number,
     sz: number,
-    name: string
+    name: string,
+    surfaceType?: SurfaceType,
+    colliderType: ColliderType = 'static'
   ): void {
     const box = new THREE.Box3()
     box.min.set(cx - sx / 2, cy - sy / 2, cz - sz / 2)
@@ -25,7 +28,9 @@ export class DistrictHelper {
       id: name,
       name,
       box,
-      isStatic: true,
+      isStatic: colliderType === 'static',
+      surfaceType,
+      colliderType,
     })
   }
 

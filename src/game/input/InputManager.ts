@@ -9,6 +9,8 @@ export class InputManager {
     right: false,
     jump: false,
     sprint: false,
+    interact: false,
+    handbrake: false,
     movementX: 0,
     movementY: 0,
     scrollDelta: 0,
@@ -71,6 +73,8 @@ export class InputManager {
     this.state.right = false
     this.state.jump = false
     this.state.sprint = false
+    this.state.interact = false
+    this.state.handbrake = false
     this.state.movementX = 0
     this.state.movementY = 0
     this.state.scrollDelta = 0
@@ -148,8 +152,12 @@ export class InputManager {
         break
       case 'Space':
         this.state.jump = true
+        this.state.handbrake = true
         // Prevent default spacebar page scrolling
         e.preventDefault()
+        break
+      case 'KeyF':
+        this.state.interact = true
         break
       case 'ShiftLeft':
       case 'ShiftRight':
@@ -178,6 +186,10 @@ export class InputManager {
         break
       case 'Space':
         this.state.jump = false
+        this.state.handbrake = false
+        break
+      case 'KeyF':
+        this.state.interact = false
         break
       case 'ShiftLeft':
       case 'ShiftRight':
@@ -210,10 +222,15 @@ export class InputManager {
       right: this.state.right,
       jump: this.state.jump,
       sprint: this.state.sprint,
+      interact: this.state.interact,
+      handbrake: this.state.handbrake,
       movementX: this.state.movementX,
       movementY: this.state.movementY,
       scrollDelta: this.state.scrollDelta,
     }
+
+    // Single-pulse interact: consume interact keypress so it triggers once per press
+    this.state.interact = false
 
     // Reset accumulated mouse/scroll deltas
     this.state.movementX = 0

@@ -236,12 +236,36 @@ export class RoadNetwork {
     coastalBlvd.receiveShadow = true
     this.group.add(coastalBlvd)
 
+    DistrictHelper.registerBoxCollider(
+      collisionSystem,
+      -10,
+      0.025,
+      0,
+      12,
+      0.05,
+      220,
+      'Road_Coastal_Boulevard',
+      'road'
+    )
+
     // 3. Central East-West Boulevard (from Promenade X: -16 to Countryside X: 90, Z: 0, width: 12m)
     const centralBlvd = new THREE.Mesh(materials.boxGeometry, roadMat)
     centralBlvd.scale.set(106, 0.05, 12)
     centralBlvd.position.set(37, 0.026, 0)
     centralBlvd.receiveShadow = true
     this.group.add(centralBlvd)
+
+    DistrictHelper.registerBoxCollider(
+      collisionSystem,
+      37,
+      0.026,
+      0,
+      106,
+      0.05,
+      12,
+      'Road_Central_Boulevard',
+      'road'
+    )
 
     // Sidewalks along Central East-West Boulevard
     const centralSideNorth = new THREE.Mesh(materials.boxGeometry, sidewalkMat)
@@ -296,6 +320,18 @@ export class RoadNetwork {
     harbourRoad.position.set(-22, 0.027, 50)
     harbourRoad.receiveShadow = true
     this.group.add(harbourRoad)
+
+    DistrictHelper.registerBoxCollider(
+      collisionSystem,
+      -22,
+      0.027,
+      50,
+      24,
+      0.05,
+      10,
+      'Road_Harbour_Access',
+      'road'
+    )
 
     // Flanking pedestrian sidewalks along North Harbour Access Road
     const harbourSideNorth = new THREE.Mesh(materials.boxGeometry, sidewalkMat)

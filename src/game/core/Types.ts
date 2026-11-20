@@ -2,6 +2,9 @@ import * as THREE from 'three'
 
 export type MovementState = 'idle' | 'walking' | 'sprinting' | 'jumping' | 'falling'
 
+export type SurfaceType = 'ground' | 'road' | 'sidewalk' | 'sand' | 'wood_deck' | 'interior' | 'water_hazard'
+export type ColliderType = 'static' | 'dynamic' | 'trigger' | 'vehicle' | 'npc'
+
 export interface InputState {
   forward: boolean
   backward: boolean
@@ -9,6 +12,8 @@ export interface InputState {
   right: boolean
   jump: boolean
   sprint: boolean
+  interact: boolean
+  handbrake: boolean
   movementX: number
   movementY: number
   scrollDelta: number
@@ -38,7 +43,30 @@ export interface ICollider {
   isStatic: boolean
   name?: string
   isTrigger?: boolean
+  surfaceType?: SurfaceType
+  colliderType?: ColliderType
   onCollide?: () => void
+}
+
+export type InteractionType = 'vehicle_enter' | 'vehicle_exit' | 'npc_talk' | 'bench_sit' | 'door_open' | 'generic'
+
+export interface InteractionPrompt {
+  active: boolean
+  prompt: string
+  key: string
+  targetId: string
+  interactionType?: InteractionType
+}
+
+export interface IInteractable {
+  id: string
+  type: InteractionType
+  position: THREE.Vector3
+  interactionRadius: number
+  promptText: string
+  promptKey?: string
+  canInteract?: (player: any) => boolean
+  onInteract(player: any): void
 }
 
 export interface IEntity {

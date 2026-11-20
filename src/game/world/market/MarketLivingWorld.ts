@@ -24,13 +24,15 @@ export class MarketLivingWorld {
   private gltfAnanya: GLTF | null = null
   private isLoaded = false
   private isDisposed = false
+  private collisionSystem: CollisionSystem
 
   constructor(
     parent: THREE.Group,
-    _collisionSystem: CollisionSystem,
+    collisionSystem: CollisionSystem,
     _materials: MaterialFactory
   ) {
     parent.add(this.group)
+    this.collisionSystem = collisionSystem
     this.preloadCharacters()
   }
 
@@ -126,15 +128,15 @@ export class MarketLivingWorld {
         name: 'Rahul',
         role: 'pedestrian',
         archetype: 'aarav',
-        spawnPosition: new THREE.Vector3(46.5, 0.05, 74.0),
+        spawnPosition: new THREE.Vector3(45.0, 0.05, 74.0),
         facingAngle: Math.PI,
         clothingColor: 0xf8f9fa, // Crisp White
         patrolSpeed: 1.30,
         waypoints: [
-          new THREE.Vector3(46.5, 0.05, 74.0),
-          new THREE.Vector3(46.5, 0.05, 54.0),
-          new THREE.Vector3(46.5, 0.05, 36.0),
-          new THREE.Vector3(46.5, 0.05, 24.0),
+          new THREE.Vector3(45.0, 0.05, 74.0),
+          new THREE.Vector3(45.0, 0.05, 54.0),
+          new THREE.Vector3(45.0, 0.05, 36.0),
+          new THREE.Vector3(45.0, 0.05, 24.0),
         ],
       },
       // Pedestrian 4: East Colonnade Visitor (Ananya rig, marigold yellow)
@@ -175,7 +177,7 @@ export class MarketLivingWorld {
 
     for (const cfg of pedestrianConfigs) {
       const template = cfg.archetype === 'aarav' ? this.gltfAarav : this.gltfAnanya
-      const npc = new MarketNPC(cfg, template)
+      const npc = new MarketNPC(cfg, template, this.collisionSystem)
       this.npcs.push(npc)
       this.group.add(npc.group)
     }
@@ -238,7 +240,7 @@ export class MarketLivingWorld {
 
     for (const cfg of shopkeeperConfigs) {
       const template = cfg.archetype === 'aarav' ? this.gltfAarav : this.gltfAnanya
-      const npc = new MarketNPC(cfg, template)
+      const npc = new MarketNPC(cfg, template, this.collisionSystem)
       this.npcs.push(npc)
       this.group.add(npc.group)
     }
@@ -257,7 +259,8 @@ export class MarketLivingWorld {
         facingAngle: Math.PI / 2, // Facing East toward customers
         clothingColor: 0xf5f6fa,
       },
-      this.gltfAarav
+      this.gltfAarav,
+      this.collisionSystem
     )
     this.npcs.push(chaiWallah)
     this.group.add(chaiWallah.group)
@@ -273,7 +276,8 @@ export class MarketLivingWorld {
         facingAngle: -Math.PI / 2, // Facing Chai Wallah
         clothingColor: 0x7f8c8d,
       },
-      this.gltfAarav
+      this.gltfAarav,
+      this.collisionSystem
     )
     this.npcs.push(chaiCust1)
     this.group.add(chaiCust1.group)
@@ -289,7 +293,8 @@ export class MarketLivingWorld {
         facingAngle: -Math.PI * 0.70,
         clothingColor: 0x3f51b5,
       },
-      this.gltfAnanya
+      this.gltfAnanya,
+      this.collisionSystem
     )
     this.npcs.push(chaiCust2)
     this.group.add(chaiCust2.group)
@@ -353,8 +358,16 @@ export class MarketLivingWorld {
     return this.npcs.length
   }
 
+  public getNPCs(): readonly MarketNPC[] {
+    return this.npcs
+  }
+
   public getVehicleCount(): number {
     return this.vehicles.length
+  }
+
+  public getVehicles(): readonly MarketVehicle[] {
+    return this.vehicles
   }
 
   public dispose(): void {

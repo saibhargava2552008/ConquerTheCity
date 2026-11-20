@@ -1,13 +1,14 @@
 import React from 'react'
-import type { EngineStats, PlayerStats, MissionObjective } from '../game/core/Types'
+import type { EngineStats, PlayerStats, MissionObjective, InteractionPrompt } from '../game/core/Types'
 
 interface HUDProps {
   stats: EngineStats | null
   playerStats: PlayerStats | null
   objectives: MissionObjective[]
+  interactionPrompt?: InteractionPrompt | null
 }
 
-export const HUD: React.FC<HUDProps> = ({ stats, playerStats, objectives }) => {
+export const HUD: React.FC<HUDProps> = ({ stats, playerStats, objectives, interactionPrompt }) => {
   const fps = stats ? stats.fps : 60
   const frameTime = stats ? stats.frameTime : 16.6
   const fpsColor = fps >= 50 ? '#00f5d4' : fps >= 30 ? '#ffd166' : '#ff595e'
@@ -77,6 +78,14 @@ export const HUD: React.FC<HUDProps> = ({ stats, playerStats, objectives }) => {
         <span>Z: {posZ}</span>
         <span className="ground-tag">{playerStats?.isGrounded ? 'GROUNDED' : 'AIR'}</span>
       </div>
+
+      {/* Floating Center Interaction Prompt */}
+      {interactionPrompt?.active && (
+        <div className="interaction-prompt-banner">
+          <kbd className="prompt-kbd">{interactionPrompt.key}</kbd>
+          <span className="prompt-label">{interactionPrompt.prompt}</span>
+        </div>
+      )}
     </div>
   )
 }
