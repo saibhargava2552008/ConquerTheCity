@@ -104,33 +104,61 @@ export class RoadNetwork {
       )
     }
 
-    // Belvedere Curved Perimeter Railing (following the 6m radius arc around X: -20, Z: -122, leaving south stairs open)
-    const belvedereRailAngles = [
-      Math.PI * 0.55,
-      Math.PI * 0.75,
-      Math.PI * 0.95,
-      Math.PI * 1.15,
-      Math.PI * 1.35,
-    ]
-    for (let a = 0; a < belvedereRailAngles.length; a++) {
-      const ang = belvedereRailAngles[a]
-      const rx = -20 + Math.cos(ang) * 5.8
-      const rz = -122 + Math.sin(ang) * 5.8
-      const railArcGeo = new THREE.BoxGeometry(0.4, 0.9, 2.8)
+    // Belvedere Curved Perimeter Railing: Smooth continuous curved stone balustrade (32 overlapping segments)
+    // Seaward Arc: from straight balustrade junction (X: -23.8, Z: -122) around to West Gate Pillar (X: -21.8, Z: -128)
+    // Landward Arc: from East Gate Pillar (X: -18.2, Z: -128) around to Promenade landward edge (X: -16.0, Z: -122)
+    // Radius R = 5.8m, seamless overlap eliminates any gaps or floating chunks
+    const R_BELV = 5.8
+    const numBelvSegs = 16
+
+    // 1. Seaward Arc: angle PI (X: -23.8, Z: -122) to 1.41 * PI (X: -21.8, Z: -128)
+    for (let i = 0; i < numBelvSegs; i++) {
+      const ang = Math.PI + (Math.PI * 0.41) * (i + 0.5) / numBelvSegs
+      const segLen = R_BELV * (Math.PI * 0.41 / numBelvSegs) * 1.12
+      const rx = -20 + Math.cos(ang) * R_BELV
+      const rz = -122 + Math.sin(ang) * R_BELV
+      const railArcGeo = new THREE.BoxGeometry(0.4, 0.9, segLen)
       railArcGeo.rotateY(-ang + Math.PI / 2)
-      railArcGeo.translate(rx, 0.7, rz)
+      railArcGeo.translate(rx, 0.70, rz)
       balustradeGeos.push(railArcGeo)
 
-      DistrictHelper.registerBoxCollider(
-        collisionSystem,
-        rx,
-        0.7,
-        rz,
-        1.2,
-        1.1,
-        2.8,
-        `Promenade_Belvedere_Railing_${a}`
-      )
+      if (i % 3 === 1 || i === numBelvSegs - 1) {
+        DistrictHelper.registerBoxCollider(
+          collisionSystem,
+          rx,
+          0.70,
+          rz,
+          1.0,
+          1.1,
+          segLen * 2.2,
+          `Promenade_Belvedere_Railing_West_${i}`
+        )
+      }
+    }
+
+    // 2. Landward Arc: angle 1.59 * PI (X: -18.2, Z: -128) to 2.0 * PI (X: -16.0, Z: -122)
+    for (let i = 0; i < numBelvSegs; i++) {
+      const ang = Math.PI * 1.59 + (Math.PI * 0.41) * (i + 0.5) / numBelvSegs
+      const segLen = R_BELV * (Math.PI * 0.41 / numBelvSegs) * 1.12
+      const rx = -20 + Math.cos(ang) * R_BELV
+      const rz = -122 + Math.sin(ang) * R_BELV
+      const railArcGeo = new THREE.BoxGeometry(0.4, 0.9, segLen)
+      railArcGeo.rotateY(-ang + Math.PI / 2)
+      railArcGeo.translate(rx, 0.70, rz)
+      balustradeGeos.push(railArcGeo)
+
+      if (i % 3 === 1 || i === numBelvSegs - 1) {
+        DistrictHelper.registerBoxCollider(
+          collisionSystem,
+          rx,
+          0.70,
+          rz,
+          1.0,
+          1.1,
+          segLen * 2.2,
+          `Promenade_Belvedere_Railing_East_${i}`
+        )
+      }
     }
 
     const mergedBalustradeGeo = BufferGeometryUtils.mergeGeometries(balustradeGeos)

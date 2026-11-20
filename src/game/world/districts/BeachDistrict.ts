@@ -35,6 +35,25 @@ export class BeachDistrict {
     // Beach Ground Collider
     DistrictHelper.registerBoxCollider(collisionSystem, -40, -0.2, 0, 38, 0.6, 260, 'Beach_Sand_Terrain')
 
+    // 2b. Southern Belvedere Dune & Grounding Platform (extending beach sand from X: -23.5 to -11.5 around Z: -115 to -135)
+    // Seamlessly grounds the Southern Belvedere platform (X: -26 to -14) and staircase down to sand with zero void gaps
+    const belvedereDuneMesh = new THREE.Mesh(materials.boxGeometry, sandMat)
+    belvedereDuneMesh.scale.set(12, 0.6, 24)
+    belvedereDuneMesh.position.set(-17.5, -0.2, -125)
+    belvedereDuneMesh.receiveShadow = true
+    this.group.add(belvedereDuneMesh)
+
+    DistrictHelper.registerBoxCollider(
+      collisionSystem,
+      -17.5,
+      -0.2,
+      -125,
+      12,
+      0.6,
+      24,
+      'Beach_Dune_Belvedere_Grounding'
+    )
+
     // 3. Deep Water Boundary Wall (Invisible safety collider at X: -62 to prevent falling into deep abyss)
     DistrictHelper.registerBoxCollider(collisionSystem, -62, 5, 0, 4, 14, 280, 'Ocean_Safety_Barrier')
 

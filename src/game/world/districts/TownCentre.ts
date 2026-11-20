@@ -32,31 +32,33 @@ export class TownCentre {
     })
     const metalMat = materials.getColorMaterial(0x2b2d42, 0.4, 0.6)
 
-    // 1. Central Plaza Platform (X: 0, Z: 0, 30m x 30m, walkable platform at Y = 0.35m)
+    // 1. Central Plaza Platform (X: -4 to 16, Z: -15 to 15, width: 20m, length: 30m, platform at Y = 0.35m)
+    // Positioned strictly East of Marine Boulevard (X <= -4) so the road and zebra crossing are fully exposed
     const plaza = new THREE.Mesh(materials.boxGeometry, plazaTileMat)
-    plaza.scale.set(30, 0.35, 30)
-    plaza.position.set(0, 0.175, 0)
+    plaza.scale.set(20, 0.35, 30)
+    plaza.position.set(6.0, 0.175, 0)
     plaza.receiveShadow = true
     this.group.add(plaza)
 
     // Register Plaza Walkable Platform Collider
     DistrictHelper.registerBoxCollider(
       collisionSystem,
-      0,
+      6.0,
       0.175,
       0,
-      30,
+      20,
       0.35,
       30,
       'Central_Plaza_Platform'
     )
 
-    // Beveled curb transition ramps along the 4 edges of the plaza for smooth walking transitions
+    // Beveled curb transition ramps along the edges of the plaza for smooth walking transitions
+    // West ramp links directly to Marine Boulevard zebra crosswalk at Z in [-4, 4]
     const curbEdges: [number, number, number, number][] = [
-      [0, 15.6, 26, 1.2],   // North edge
-      [0, -15.6, 26, 1.2],  // South edge
-      [15.6, 0, 1.2, 26],   // East edge
-      [-15.6, 0, 1.2, 26],  // West edge
+      [6.0, 15.6, 18, 1.2],   // North edge (X: -3 to 15)
+      [6.0, -15.6, 18, 1.2],  // South edge (X: -3 to 15)
+      [16.6, 0, 1.2, 28],     // East edge
+      [-4.6, 0, 1.2, 8.0],    // West edge curb ramp connecting road (Y=0.05m) to plaza (Y=0.35m) at crosswalk
     ]
     for (let c = 0; c < curbEdges.length; c++) {
       const [cx, cz, cw, cd] = curbEdges[c]
@@ -219,9 +221,9 @@ export class TownCentre {
     // 3. Stately Royal Palms in the Plaza (positioned clear of all boulevard and road lanes)
     const plazaPalms = [
       [10, 10],
-      [-3, 10],
+      [-2.5, 10],
       [10, -10],
-      [-3, -10],
+      [-2.5, -10],
     ]
 
     for (let i = 0; i < plazaPalms.length; i++) {
@@ -242,9 +244,9 @@ export class TownCentre {
     // 4. Teak Wood & Cast-Iron Plaza Benches positioned in lighthouse garden alcoves
     const benches = [
       [4, 0.35, -3, -Math.PI / 2],
-      [-4, 0.35, -3, Math.PI / 2],
+      [-2.8, 0.35, -3, Math.PI / 2],
       [4, 0.35, -7, -Math.PI / 2],
-      [-4, 0.35, -7, Math.PI / 2],
+      [-2.8, 0.35, -7, Math.PI / 2],
     ]
 
     for (let i = 0; i < benches.length; i++) {
@@ -263,9 +265,9 @@ export class TownCentre {
     // 5. Colonial Victorian Marine Streetlamps at Plaza Corner Perimeters
     const lampCorners = [
       [11, 11],
-      [-11, 11],
+      [-3.8, 11],
       [11, -11],
-      [-11, -11],
+      [-3.8, -11],
     ]
     for (const [lx, lz] of lampCorners) {
       DistrictHelper.addStreetLamp(
@@ -283,7 +285,7 @@ export class TownCentre {
     DistrictHelper.addAutoRickshaw(
       this.group,
       collisionSystem,
-      -12,
+      -3.8,
       0.35,
       12,
       -Math.PI / 4,
@@ -303,7 +305,7 @@ export class TownCentre {
     DistrictHelper.addUtilityPole(
       this.group,
       collisionSystem,
-      -14,
+      -3.8,
       -14,
       0,
       'Plaza_Utility_Pole_West'
