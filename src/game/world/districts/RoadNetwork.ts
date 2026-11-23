@@ -529,24 +529,7 @@ export class RoadNetwork {
     }
 
     // 10. Parked Auto-Rickshaws along Coastal Boulevard roadside stands
-    DistrictHelper.addAutoRickshaw(
-      this.group,
-      collisionSystem,
-      -3.8,
-      0,
-      -32,
-      0,
-      'Coastal_Blvd_Rickshaw_South'
-    )
-    DistrictHelper.addAutoRickshaw(
-      this.group,
-      collisionSystem,
-      -3.8,
-      0,
-      36,
-      0,
-      'Coastal_Blvd_Rickshaw_North'
-    )
+    // (Managed by VehicleManager at Coastal Blvd South and North for active drivability)
 
     // 11. Concrete Utility Poles along the roadside infrastructure strip
     DistrictHelper.addUtilityPole(

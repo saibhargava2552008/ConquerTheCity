@@ -126,6 +126,13 @@
   border: 1px solid rgba(251, 113, 133, 0.5);
 }
 
+.status-badge[data-state='driving'] {
+  background: rgba(16, 185, 129, 0.25);
+  color: #10b981;
+  border: 1px solid rgba(16, 185, 129, 0.5);
+  box-shadow: 0 0 10px rgba(16, 185, 129, 0.3);
+}
+
 .status-badge[data-state='jumping'],
 .status-badge[data-state='falling'] {
   background: rgba(234, 179, 8, 0.25);

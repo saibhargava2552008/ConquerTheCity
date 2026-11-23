@@ -1,7 +1,7 @@
 import * as THREE from 'three'
 import { GLTFLoader, type GLTF } from 'three/examples/jsm/loaders/GLTFLoader.js'
 import { MarketNPC, type NPCConfig } from './MarketNPC'
-import { MarketVehicle, type VehicleConfig } from './MarketVehicle'
+import { MarketVehicle } from './MarketVehicle'
 import type { CollisionSystem } from '../../physics/CollisionSystem'
 import type { MaterialFactory } from '../MaterialFactory'
 
@@ -128,15 +128,15 @@ export class MarketLivingWorld {
         name: 'Rahul',
         role: 'pedestrian',
         archetype: 'aarav',
-        spawnPosition: new THREE.Vector3(45.0, 0.05, 74.0),
+        spawnPosition: new THREE.Vector3(46.5, 0.05, 74.0),
         facingAngle: Math.PI,
         clothingColor: 0xf8f9fa, // Crisp White
         patrolSpeed: 1.30,
         waypoints: [
-          new THREE.Vector3(45.0, 0.05, 74.0),
-          new THREE.Vector3(45.0, 0.05, 54.0),
-          new THREE.Vector3(45.0, 0.05, 36.0),
-          new THREE.Vector3(45.0, 0.05, 24.0),
+          new THREE.Vector3(46.5, 0.05, 74.0),
+          new THREE.Vector3(46.5, 0.05, 54.0),
+          new THREE.Vector3(46.5, 0.05, 36.0),
+          new THREE.Vector3(46.5, 0.05, 24.0),
         ],
       },
       // Pedestrian 4: East Colonnade Visitor (Ananya rig, marigold yellow)
@@ -358,16 +358,8 @@ export class MarketLivingWorld {
     return this.npcs.length
   }
 
-  public getNPCs(): readonly MarketNPC[] {
-    return this.npcs
-  }
-
   public getVehicleCount(): number {
     return this.vehicles.length
-  }
-
-  public getVehicles(): readonly MarketVehicle[] {
-    return this.vehicles
   }
 
   public dispose(): void {

@@ -13,8 +13,6 @@ export class FishingHarbour {
   private build(materials: MaterialFactory, collisionSystem: CollisionSystem): void {
     const woodMat = materials.getTimberWoodMaterial()
     const metalMat = materials.getColorMaterial(0x2f3640, 0.4, 0.6)
-    const warehouseWallMat = materials.getStuccoMaterial('#e9d8a6', '#9b2226')
-    const roofMat = materials.getColorMaterial(0x3d5a80, 0.7, 0.3)
     const barrelMat = materials.getColorMaterial(0x7f4f24, 0.8, 0.0)
 
     // 1. Main Pier / Wooden Wharf extending into the water (X: -42, Z: 50 to 95)

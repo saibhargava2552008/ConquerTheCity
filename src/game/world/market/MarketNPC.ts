@@ -43,13 +43,12 @@ export class MarketNPC {
   private currentWaypointIndex = 0
   private patrolSpeed = 1.25
   private pauseTimer = 0
-  private browseTimer = 0
   private interactionTimer = 0
   private isForward = true
 
   // LOD and performance budgeting
   private distanceToPlayer = 0
-  private isDormant = false
+  public isDormant = false
   private isShadowCasting = true
   private collisionSystem?: CollisionSystem
 
@@ -366,7 +365,7 @@ export class MarketNPC {
     }
   }
 
-  private updateChaiCustomer(dt: number, playerPos: THREE.Vector3): void {
+  private updateChaiCustomer(dt: number, _playerPos: THREE.Vector3): void {
     this.interactionTimer += dt
     // Casual conversing gestures
     if (this.interactionTimer > 6.0) {

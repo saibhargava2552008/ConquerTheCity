@@ -1,6 +1,6 @@
 import * as THREE from 'three'
 
-export type MovementState = 'idle' | 'walking' | 'sprinting' | 'jumping' | 'falling'
+export type MovementState = 'idle' | 'walking' | 'sprinting' | 'jumping' | 'falling' | 'driving'
 
 export type SurfaceType = 'ground' | 'road' | 'sidewalk' | 'sand' | 'wood_deck' | 'interior' | 'water_hazard'
 export type ColliderType = 'static' | 'dynamic' | 'trigger' | 'vehicle' | 'npc'

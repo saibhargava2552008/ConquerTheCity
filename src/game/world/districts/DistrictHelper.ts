@@ -975,6 +975,7 @@ export class DistrictHelper {
 
       collisionSystem.addCollider({
         id: `${name}_${c.id}_${Math.round(x)}_${Math.round(z)}`,
+        isStatic: true,
         box: new THREE.Box3(
           new THREE.Vector3(wMinX, wMinY, wMinZ),
           new THREE.Vector3(wMaxX, wMaxY, wMaxZ)
@@ -1132,6 +1133,7 @@ export class DistrictHelper {
 
       collisionSystem.addCollider({
         id: `${name}_${c.id}_${Math.round(x)}_${Math.round(z)}`,
+        isStatic: true,
         box: new THREE.Box3(
           new THREE.Vector3(wMinX, wMinY, wMinZ),
           new THREE.Vector3(wMaxX, wMaxY, wMaxZ)
@@ -1280,6 +1282,7 @@ export class DistrictHelper {
 
       collisionSystem.addCollider({
         id: `${name}_${c.id}_${Math.round(x)}_${Math.round(z)}`,
+        isStatic: true,
         box: new THREE.Box3(
           new THREE.Vector3(wMinX, wMinY, wMinZ),
           new THREE.Vector3(wMaxX, wMaxY, wMaxZ)
@@ -1782,9 +1785,9 @@ export class DistrictHelper {
   public static registerBlenderFisheryColdStorageColliders(
     collisionSystem: CollisionSystem,
     x: number,
-    y: number,
+    _y: number,
     z: number,
-    rotY = 0,
+    _rotY = 0,
     name = 'Fishery_Cold_Storage'
   ): void {
     // 1. Walkable Interior Floor (x: -24, z: 75, width: 14, height: 1.2, depth: 20)
@@ -2040,7 +2043,7 @@ export class DistrictHelper {
     x: number,
     y: number,
     z: number,
-    rotY = 0,
+    _rotY = 0,
     name = 'Fish_Auction_Pavilion'
   ): void {
     // 1. Walkable Foundation Floor Plinth (height 0.40m, matching wharf height)
@@ -2163,7 +2166,6 @@ export class DistrictHelper {
     mid.y -= sag
 
     const curve = new THREE.QuadraticBezierCurve3(start, mid, end)
-    const points = curve.getPoints(12)
     const tubeGeom = new THREE.TubeGeometry(curve, 12, 0.02, 4, false)
     const cableMat = materials.getColorMaterial(0x1a1a1a, 0.85, 0.05)
     const cableMesh = new THREE.Mesh(tubeGeom, cableMat)
@@ -2252,7 +2254,7 @@ export class DistrictHelper {
     x: number,
     y: number,
     z: number,
-    rotY = 0,
+    _rotY = 0,
     name = 'Fishermen_Cooperative'
   ): void {
     // 1. Walkable Foundation Plinth (height 0.40m, matching wharf height)
