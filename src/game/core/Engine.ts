@@ -10,6 +10,7 @@ import { InputManager } from '../input/InputManager'
 import { InteractionManager } from '../interaction/InteractionManager'
 import { VehicleManager } from '../vehicles/VehicleManager'
 import { CityNPCManager } from '../ai/CityNPCManager'
+import { InteriorManager } from '../interiors/InteriorManager'
 import { MissionSystem } from '../systems/MissionSystem'
 import type { MissionEvents } from '../systems/MissionSystem'
 import { EventEmitter } from './EventEmitter'
@@ -42,6 +43,7 @@ export class Engine {
   public readonly interactionManager: InteractionManager
   public readonly vehicleManager: VehicleManager
   public readonly cityNPCManager: CityNPCManager
+  public readonly interiorManager: InteriorManager
   public readonly missionSystem: MissionSystem
 
   private animationId = 0
@@ -139,7 +141,33 @@ export class Engine {
       this.events.emit('dialogue', msg)
     })
 
-    // 11. Mission System
+    // 11. Building Entrance & Interior System
+    this.interiorManager = new InteriorManager(
+      this.collisionSystem,
+      this.interactionManager,
+      this.materials
+    )
+    this.scene.add(this.interiorManager.group)
+
+    this.interiorManager.events.on('dialogue', msg => {
+      this.events.emit('dialogue', msg)
+    })
+
+    this.interiorManager.events.on('buildingEntered', ({ spawnPos }) => {
+      this.playerController.teleport(spawnPos.x, spawnPos.y, spawnPos.z)
+      this.player.setPosition(spawnPos.x, spawnPos.y, spawnPos.z)
+      this.thirdPersonCamera.distance = 2.6
+      this.thirdPersonCamera.snapBehindPlayer(spawnPos, 0)
+    })
+
+    this.interiorManager.events.on('buildingExited', ({ exitPos }) => {
+      this.playerController.teleport(exitPos.x, exitPos.y, exitPos.z)
+      this.player.setPosition(exitPos.x, exitPos.y, exitPos.z)
+      this.thirdPersonCamera.distance = 4.8
+      this.thirdPersonCamera.snapBehindPlayer(exitPos, Math.PI)
+    })
+
+    // 12. Mission System
     this.missionSystem = new MissionSystem(this.events as unknown as EventEmitter<MissionEvents>)
 
     // 12. Resize Handling
@@ -311,6 +339,9 @@ export class Engine {
       // Update City-Wide NPC population and intelligent navigation
       this.cityNPCManager.update(dt, playerStats.position)
 
+      // Update Building Entrance & Interior System
+      this.interiorManager.update(dt, playerStats.position, this.player, this.thirdPersonCamera)
+
       // Update directional light & shadow coverage
       this.skyAndLighting.update(playerStats.position)
 
@@ -366,6 +397,7 @@ export class Engine {
     this.interactionManager.dispose()
     this.vehicleManager.dispose()
     this.cityNPCManager.dispose()
+    this.interiorManager.dispose()
     this.seaviewTown.dispose()
     this.skyAndLighting.dispose()
     this.player.dispose()

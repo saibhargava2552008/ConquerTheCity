@@ -331,8 +331,8 @@ export class CollisionSystem {
       }
     }
 
-    // 4. World bounds safety clamping for expanded Seaview Town (bounds: +/-120m)
-    const worldLimit = 120.0
+    // 4. World bounds safety clamping for expanded Seaview Town & Interior Staging (bounds: +/-500m)
+    const worldLimit = 500.0
     position.x = clamp(position.x, -worldLimit, worldLimit)
     position.z = clamp(position.z, -worldLimit, worldLimit)
   }
