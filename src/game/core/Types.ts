@@ -84,3 +84,11 @@ export interface MissionObjective {
   radius: number
   completed: boolean
 }
+
+export interface DialogueMessage {
+  speaker: string
+  title?: string
+  text: string
+  district?: string
+  duration?: number
+}

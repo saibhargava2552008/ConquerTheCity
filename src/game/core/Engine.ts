@@ -9,16 +9,18 @@ import { ThirdPersonCamera } from '../camera/ThirdPersonCamera'
 import { InputManager } from '../input/InputManager'
 import { InteractionManager } from '../interaction/InteractionManager'
 import { VehicleManager } from '../vehicles/VehicleManager'
+import { CityNPCManager } from '../ai/CityNPCManager'
 import { MissionSystem } from '../systems/MissionSystem'
 import type { MissionEvents } from '../systems/MissionSystem'
 import { EventEmitter } from './EventEmitter'
-import type { EngineStats, PlayerStats, InteractionPrompt } from './Types'
+import type { EngineStats, PlayerStats, InteractionPrompt, DialogueMessage } from './Types'
 
 export type EngineEvents = MissionEvents & {
   stats: EngineStats
   playerStats: PlayerStats
   pointerLockChange: boolean
   interactionPrompt: InteractionPrompt
+  dialogue: DialogueMessage | null
 }
 
 export class Engine {
@@ -39,6 +41,7 @@ export class Engine {
   public readonly inputManager: InputManager
   public readonly interactionManager: InteractionManager
   public readonly vehicleManager: VehicleManager
+  public readonly cityNPCManager: CityNPCManager
   public readonly missionSystem: MissionSystem
 
   private animationId = 0
@@ -128,13 +131,21 @@ export class Engine {
 
     this.spawnVehicles()
 
-    // 10. Mission System
+    // 10. City-Wide Intelligent Pedestrian System
+    this.cityNPCManager = new CityNPCManager(this.collisionSystem, this.interactionManager)
+    this.scene.add(this.cityNPCManager.group)
+
+    this.cityNPCManager.events.on('dialogue', msg => {
+      this.events.emit('dialogue', msg)
+    })
+
+    // 11. Mission System
     this.missionSystem = new MissionSystem(this.events as unknown as EventEmitter<MissionEvents>)
 
-    // 11. Resize Handling
+    // 12. Resize Handling
     this.setupResize()
 
-    // 12. Start Loop
+    // 13. Start Loop
     this.start()
   }
 
@@ -297,6 +308,9 @@ export class Engine {
       // Update environmental world animations (ocean waves, lighthouse beacon, living market)
       this.seaviewTown.update(dt, playerStats.position)
 
+      // Update City-Wide NPC population and intelligent navigation
+      this.cityNPCManager.update(dt, playerStats.position)
+
       // Update directional light & shadow coverage
       this.skyAndLighting.update(playerStats.position)
 
@@ -351,6 +365,7 @@ export class Engine {
     this.inputManager.dispose()
     this.interactionManager.dispose()
     this.vehicleManager.dispose()
+    this.cityNPCManager.dispose()
     this.seaviewTown.dispose()
     this.skyAndLighting.dispose()
     this.player.dispose()

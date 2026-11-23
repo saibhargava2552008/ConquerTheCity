@@ -1,7 +1,7 @@
 import React, { useEffect, useRef, useState, useCallback } from 'react'
 import { Engine } from '../game/core/Engine'
 import type { CharacterId } from '../game/entities/Player'
-import type { EngineStats, PlayerStats, MissionObjective, InteractionPrompt } from '../game/core/Types'
+import type { EngineStats, PlayerStats, MissionObjective, InteractionPrompt, DialogueMessage } from '../game/core/Types'
 import { HUD } from './HUD'
 import { ControlsOverlay } from './ControlsOverlay'
 
@@ -24,6 +24,8 @@ export const GameCanvas: React.FC = () => {
   const [playerStats, setPlayerStats] = useState<PlayerStats | null>(null)
   const [objectives, setObjectives] = useState<MissionObjective[]>([])
   const [interactionPrompt, setInteractionPrompt] = useState<InteractionPrompt | null>(null)
+  const [dialogue, setDialogue] = useState<DialogueMessage | null>(null)
+  const dialogueTimerRef = useRef<number | null>(null)
 
   useEffect(() => {
     const container = mountRef.current
@@ -58,6 +60,16 @@ export const GameCanvas: React.FC = () => {
       setInteractionPrompt(p.active ? p : null)
     })
 
+    const unsubDialogue = engine.events.on('dialogue', msg => {
+      if (dialogueTimerRef.current) clearTimeout(dialogueTimerRef.current)
+      setDialogue(msg)
+      if (msg) {
+        dialogueTimerRef.current = window.setTimeout(() => {
+          setDialogue(null)
+        }, (msg.duration || 4.5) * 1000)
+      }
+    })
+
     // Listen for 'KeyF' to trigger character hand interaction gesture
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.code === 'KeyF' && !e.repeat) {
@@ -73,6 +85,8 @@ export const GameCanvas: React.FC = () => {
       unsubLock()
       unsubObjectives()
       unsubPrompt()
+      unsubDialogue()
+      if (dialogueTimerRef.current) clearTimeout(dialogueTimerRef.current)
       engine.dispose()
       engineRef.current = null
       ;(window as unknown as { __CTC_ENGINE__: Engine | null }).__CTC_ENGINE__ = null
@@ -113,6 +127,7 @@ export const GameCanvas: React.FC = () => {
         playerStats={playerStats}
         objectives={objectives}
         interactionPrompt={interactionPrompt}
+        dialogue={dialogue}
       />
 
       {/* Controls and Pause/Entry Overlay */}
