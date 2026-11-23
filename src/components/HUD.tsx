@@ -82,9 +82,14 @@ export const HUD: React.FC<HUDProps> = ({ stats, playerStats, objectives, intera
 
       {/* Floating Center Interaction Prompt */}
       {interactionPrompt?.active && (
-        <div className="interaction-prompt-banner">
+        <div className={`interaction-prompt-banner ${interactionPrompt.isBlocked ? 'prompt-blocked' : ''}`}>
           <kbd className="prompt-kbd">{interactionPrompt.key}</kbd>
           <span className="prompt-label">{interactionPrompt.prompt}</span>
+          {interactionPrompt.secondaryAction && (
+            <span className="prompt-secondary">
+              [{interactionPrompt.secondaryKey || 'E'}] {interactionPrompt.secondaryAction}
+            </span>
+          )}
         </div>
       )}
 

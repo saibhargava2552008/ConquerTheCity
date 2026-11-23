@@ -288,6 +288,14 @@
   animation: promptFadeIn 0.15s ease-out;
 }
 
+.prompt-secondary {
+  font-size: 0.8rem;
+  color: #94a3b8;
+  border-left: 1px solid rgba(255, 255, 255, 0.2);
+  padding-left: 8px;
+  font-style: italic;
+}
+
 /* Floating Dialogue Subtitle Banner */
 .hud-dialogue-banner {
   position: absolute;

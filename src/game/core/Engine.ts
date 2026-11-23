@@ -11,6 +11,7 @@ import { InteractionManager } from '../interaction/InteractionManager'
 import { VehicleManager } from '../vehicles/VehicleManager'
 import { CityNPCManager } from '../ai/CityNPCManager'
 import { InteriorManager } from '../interiors/InteriorManager'
+import { WorldInteractions } from '../interaction/WorldInteractions'
 import { MissionSystem } from '../systems/MissionSystem'
 import type { MissionEvents } from '../systems/MissionSystem'
 import { EventEmitter } from './EventEmitter'
@@ -44,6 +45,7 @@ export class Engine {
   public readonly vehicleManager: VehicleManager
   public readonly cityNPCManager: CityNPCManager
   public readonly interiorManager: InteriorManager
+  public readonly worldInteractions: WorldInteractions
   public readonly missionSystem: MissionSystem
 
   private animationId = 0
@@ -167,13 +169,19 @@ export class Engine {
       this.thirdPersonCamera.snapBehindPlayer(exitPos, Math.PI)
     })
 
-    // 12. Mission System
+    // 12. World Environmental & Commercial Interactions
+    this.worldInteractions = new WorldInteractions(this.interactionManager)
+    this.worldInteractions.events.on('dialogue', msg => {
+      this.events.emit('dialogue', msg)
+    })
+
+    // 13. Mission System
     this.missionSystem = new MissionSystem(this.events as unknown as EventEmitter<MissionEvents>)
 
-    // 12. Resize Handling
+    // 14. Resize Handling
     this.setupResize()
 
-    // 13. Start Loop
+    // 15. Start Loop
     this.start()
   }
 
@@ -348,8 +356,19 @@ export class Engine {
       // Update missions / objectives
       this.missionSystem.update(playerStats.position)
 
-      // Update interaction system with proximity detection and KeyF interact input
-      this.interactionManager.update(playerStats.position, input.interact, this.player)
+      // Update interaction system with proximity detection, priority resolution, and KeyF interact input
+      const camForward = new THREE.Vector3()
+      this.thirdPersonCamera.getHorizontalForward(camForward)
+
+      this.interactionManager.update(playerStats.position, input.interact, this.player, {
+        dt,
+        playerFacing: this.playerController.getFacingAngle(),
+        cameraForward: camForward,
+        isGrounded: playerStats.isGrounded,
+        isDriving: this.vehicleManager.isDriving(),
+        isIndoor: this.interiorManager.isIndoor(),
+        activeBuildingId: this.interiorManager.getCurrentBuilding()?.id,
+      })
 
       // Render 3D scene
       this.renderer.render(this.scene, this.camera)
@@ -394,6 +413,7 @@ export class Engine {
     }
 
     this.inputManager.dispose()
+    this.worldInteractions.dispose()
     this.interactionManager.dispose()
     this.vehicleManager.dispose()
     this.cityNPCManager.dispose()

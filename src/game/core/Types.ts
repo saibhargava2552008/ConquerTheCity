@@ -48,7 +48,24 @@ export interface ICollider {
   onCollide?: () => void
 }
 
-export type InteractionType = 'vehicle_enter' | 'vehicle_exit' | 'npc_talk' | 'bench_sit' | 'door_open' | 'generic'
+export type InteractionCategory =
+  | 'world'
+  | 'object'
+  | 'npc'
+  | 'vehicle'
+  | 'commercial'
+
+export type InteractionType =
+  | 'vehicle_enter'
+  | 'vehicle_exit'
+  | 'npc_talk'
+  | 'bench_sit'
+  | 'door_open'
+  | 'examine'
+  | 'commercial'
+  | 'pickup'
+  | 'activate'
+  | 'generic'
 
 export interface InteractionPrompt {
   active: boolean
@@ -56,16 +73,33 @@ export interface InteractionPrompt {
   key: string
   targetId: string
   interactionType?: InteractionType
+  category?: InteractionCategory
+  actionName?: string
+  targetName?: string
+  secondaryAction?: string
+  secondaryKey?: string
+  priority?: number
+  isBlocked?: boolean
+  blockedReason?: string
 }
 
 export interface IInteractable {
   id: string
   type: InteractionType
+  category?: InteractionCategory
   position: THREE.Vector3
   interactionRadius: number
   promptText: string
   promptKey?: string
-  canInteract?: (player: any) => boolean
+  actionName?: string
+  targetName?: string
+  secondaryAction?: string
+  secondaryKey?: string
+  priority?: number
+  isOneTime?: boolean
+  hasTriggered?: boolean
+  district?: string
+  canInteract?: (player: any) => boolean | { allowed: boolean; reason?: string }
   onInteract(player: any): void
 }
 
