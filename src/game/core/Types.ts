@@ -1,6 +1,9 @@
 import * as THREE from 'three'
 
-export type MovementState = 'idle' | 'walking' | 'sprinting' | 'jumping' | 'falling'
+export type MovementState = 'idle' | 'walking' | 'sprinting' | 'jumping' | 'falling' | 'driving'
+
+export type SurfaceType = 'ground' | 'road' | 'sidewalk' | 'sand' | 'wood_deck' | 'interior' | 'water_hazard'
+export type ColliderType = 'static' | 'dynamic' | 'trigger' | 'vehicle' | 'npc'
 
 export interface InputState {
   forward: boolean
@@ -9,6 +12,8 @@ export interface InputState {
   right: boolean
   jump: boolean
   sprint: boolean
+  interact: boolean
+  handbrake: boolean
   movementX: number
   movementY: number
   scrollDelta: number
@@ -38,7 +43,64 @@ export interface ICollider {
   isStatic: boolean
   name?: string
   isTrigger?: boolean
+  surfaceType?: SurfaceType
+  colliderType?: ColliderType
   onCollide?: () => void
+}
+
+export type InteractionCategory =
+  | 'world'
+  | 'object'
+  | 'npc'
+  | 'vehicle'
+  | 'commercial'
+
+export type InteractionType =
+  | 'vehicle_enter'
+  | 'vehicle_exit'
+  | 'npc_talk'
+  | 'bench_sit'
+  | 'door_open'
+  | 'examine'
+  | 'commercial'
+  | 'pickup'
+  | 'activate'
+  | 'generic'
+
+export interface InteractionPrompt {
+  active: boolean
+  prompt: string
+  key: string
+  targetId: string
+  interactionType?: InteractionType
+  category?: InteractionCategory
+  actionName?: string
+  targetName?: string
+  secondaryAction?: string
+  secondaryKey?: string
+  priority?: number
+  isBlocked?: boolean
+  blockedReason?: string
+}
+
+export interface IInteractable {
+  id: string
+  type: InteractionType
+  category?: InteractionCategory
+  position: THREE.Vector3
+  interactionRadius: number
+  promptText: string
+  promptKey?: string
+  actionName?: string
+  targetName?: string
+  secondaryAction?: string
+  secondaryKey?: string
+  priority?: number
+  isOneTime?: boolean
+  hasTriggered?: boolean
+  district?: string
+  canInteract?: (player: any) => boolean | { allowed: boolean; reason?: string }
+  onInteract(player: any): void
 }
 
 export interface IEntity {
@@ -55,4 +117,12 @@ export interface MissionObjective {
   targetPosition: THREE.Vector3
   radius: number
   completed: boolean
+}
+
+export interface DialogueMessage {
+  speaker: string
+  title?: string
+  text: string
+  district?: string
+  duration?: number
 }

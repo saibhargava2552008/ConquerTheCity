@@ -126,6 +126,13 @@
   border: 1px solid rgba(251, 113, 133, 0.5);
 }
 
+.status-badge[data-state='driving'] {
+  background: rgba(16, 185, 129, 0.25);
+  color: #10b981;
+  border: 1px solid rgba(16, 185, 129, 0.5);
+  box-shadow: 0 0 10px rgba(16, 185, 129, 0.3);
+}
+
 .status-badge[data-state='jumping'],
 .status-badge[data-state='falling'] {
   background: rgba(234, 179, 8, 0.25);
@@ -258,6 +265,136 @@
   gap: 14px;
   font-size: 11px;
   color: #94a3b8;
+}
+
+/* Floating Center Interaction Prompt Banner */
+.interaction-prompt-banner {
+  position: absolute;
+  top: 65%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  pointer-events: none;
+  z-index: 25;
+  background: rgba(15, 23, 42, 0.88);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  border: 1px solid rgba(56, 189, 248, 0.45);
+  border-radius: 8px;
+  padding: 8px 18px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.6), 0 0 12px rgba(56, 189, 248, 0.25);
+  animation: promptFadeIn 0.15s ease-out;
+}
+
+.prompt-secondary {
+  font-size: 0.8rem;
+  color: #94a3b8;
+  border-left: 1px solid rgba(255, 255, 255, 0.2);
+  padding-left: 8px;
+  font-style: italic;
+}
+
+/* Floating Dialogue Subtitle Banner */
+.hud-dialogue-banner {
+  position: absolute;
+  bottom: 50px;
+  left: 50%;
+  transform: translateX(-50%);
+  pointer-events: none;
+  z-index: 30;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  min-width: 360px;
+  max-width: 650px;
+  background: rgba(13, 17, 23, 0.94);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid rgba(255, 209, 102, 0.5);
+  box-shadow: 0 12px 36px rgba(0, 0, 0, 0.7), 0 0 16px rgba(255, 209, 102, 0.2);
+  padding: 12px 22px;
+  border-radius: 10px;
+  animation: dialogueFadeIn 0.25s ease-out;
+}
+
+.dialogue-header {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.dialogue-speaker {
+  font-size: 15px;
+  font-weight: 800;
+  color: #ffd166;
+  letter-spacing: 0.5px;
+}
+
+.dialogue-title {
+  font-size: 11px;
+  font-weight: 600;
+  color: #cbd5e1;
+  background: rgba(255, 255, 255, 0.12);
+  padding: 2px 8px;
+  border-radius: 4px;
+}
+
+.dialogue-district {
+  font-size: 10px;
+  font-weight: 700;
+  color: #38bdf8;
+  letter-spacing: 1px;
+  margin-left: auto;
+}
+
+.dialogue-body {
+  font-size: 13px;
+  line-height: 1.45;
+  color: #f8fafc;
+  font-style: italic;
+}
+
+@keyframes dialogueFadeIn {
+  from {
+    opacity: 0;
+    transform: translate(-50%, 12px);
+  }
+  to {
+    opacity: 1;
+    transform: translate(-50%, 0);
+  }
+}
+
+@keyframes promptFadeIn {
+  from {
+    opacity: 0;
+    transform: translate(-50%, -45%);
+  }
+  to {
+    opacity: 1;
+    transform: translate(-50%, -50%);
+  }
+}
+
+.prompt-kbd {
+  background: #38bdf8;
+  color: #0f172a;
+  font-weight: 800;
+  font-size: 13px;
+  padding: 3px 9px;
+  border-radius: 4px;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
+  font-family: inherit;
+}
+
+.prompt-label {
+  color: #f8fafc;
+  font-size: 14px;
+  font-weight: 600;
+  letter-spacing: 0.4px;
+  font-family: inherit;
 }
 
 .controls-hint-bar kbd {

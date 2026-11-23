@@ -281,25 +281,8 @@ export class TownCentre {
       )
     }
 
-    // 6. Parked Iconic Indian Auto-Rickshaws at Plaza Auto Stands
-    DistrictHelper.addAutoRickshaw(
-      this.group,
-      collisionSystem,
-      -3.8,
-      0.35,
-      12,
-      -Math.PI / 4,
-      'Plaza_Auto_Rickshaw_West'
-    )
-    DistrictHelper.addAutoRickshaw(
-      this.group,
-      collisionSystem,
-      12,
-      0.35,
-      12,
-      Math.PI / 4,
-      'Plaza_Auto_Rickshaw_East'
-    )
+    // 6. Parked Iconic Indian Auto-Rickshaws moved to VehicleManager for active drivability
+    // (Managed by VehicleManager at Plaza West and Plaza East)
 
     // 7. Concrete Utility Poles with Transformers along road perimeters
     DistrictHelper.addUtilityPole(

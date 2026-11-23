@@ -384,6 +384,15 @@ export class Player extends Entity {
         this.interactionTimer -= dt
       }
 
+      if (state === 'driving') {
+        this.switchAction('idle', 0.2)
+        if (this.currentAction) {
+          this.currentAction.timeScale = 1.0
+        }
+        this.mixer.update(dt)
+        return
+      }
+
       if (!isGrounded) {
         // Airborne: Jump ascent or Fall descent
         const isAscending =
@@ -470,6 +479,16 @@ export class Player extends Entity {
     // ------------------------------------------------------------------
     // 4. FALLBACK PROCEDURAL ANIMATION (Active during load or fallback)
     // ------------------------------------------------------------------
+    if (state === 'driving') {
+      this.leftLegPivot.rotation.x = -1.2
+      this.rightLegPivot.rotation.x = -1.2
+      this.leftArmPivot.rotation.x = -0.6
+      this.rightArmPivot.rotation.x = -0.6
+      this.torso.position.y = 0.85
+      this.head.position.y = 1.42
+      return
+    }
+
     if (isGrounded) {
       if (speed > 0.2) {
         const animSpeed = state === 'sprinting' ? 14 : 9

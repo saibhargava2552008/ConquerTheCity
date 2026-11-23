@@ -1,7 +1,7 @@
 import * as THREE from 'three'
 import { GLTFLoader, type GLTF } from 'three/examples/jsm/loaders/GLTFLoader.js'
 import { MarketNPC, type NPCConfig } from './MarketNPC'
-import { MarketVehicle, type VehicleConfig } from './MarketVehicle'
+import { MarketVehicle } from './MarketVehicle'
 import type { CollisionSystem } from '../../physics/CollisionSystem'
 import type { MaterialFactory } from '../MaterialFactory'
 
@@ -24,13 +24,15 @@ export class MarketLivingWorld {
   private gltfAnanya: GLTF | null = null
   private isLoaded = false
   private isDisposed = false
+  private collisionSystem: CollisionSystem
 
   constructor(
     parent: THREE.Group,
-    _collisionSystem: CollisionSystem,
+    collisionSystem: CollisionSystem,
     _materials: MaterialFactory
   ) {
     parent.add(this.group)
+    this.collisionSystem = collisionSystem
     this.preloadCharacters()
   }
 
@@ -175,7 +177,7 @@ export class MarketLivingWorld {
 
     for (const cfg of pedestrianConfigs) {
       const template = cfg.archetype === 'aarav' ? this.gltfAarav : this.gltfAnanya
-      const npc = new MarketNPC(cfg, template)
+      const npc = new MarketNPC(cfg, template, this.collisionSystem)
       this.npcs.push(npc)
       this.group.add(npc.group)
     }
@@ -238,7 +240,7 @@ export class MarketLivingWorld {
 
     for (const cfg of shopkeeperConfigs) {
       const template = cfg.archetype === 'aarav' ? this.gltfAarav : this.gltfAnanya
-      const npc = new MarketNPC(cfg, template)
+      const npc = new MarketNPC(cfg, template, this.collisionSystem)
       this.npcs.push(npc)
       this.group.add(npc.group)
     }
@@ -257,7 +259,8 @@ export class MarketLivingWorld {
         facingAngle: Math.PI / 2, // Facing East toward customers
         clothingColor: 0xf5f6fa,
       },
-      this.gltfAarav
+      this.gltfAarav,
+      this.collisionSystem
     )
     this.npcs.push(chaiWallah)
     this.group.add(chaiWallah.group)
@@ -273,7 +276,8 @@ export class MarketLivingWorld {
         facingAngle: -Math.PI / 2, // Facing Chai Wallah
         clothingColor: 0x7f8c8d,
       },
-      this.gltfAarav
+      this.gltfAarav,
+      this.collisionSystem
     )
     this.npcs.push(chaiCust1)
     this.group.add(chaiCust1.group)
@@ -289,7 +293,8 @@ export class MarketLivingWorld {
         facingAngle: -Math.PI * 0.70,
         clothingColor: 0x3f51b5,
       },
-      this.gltfAnanya
+      this.gltfAnanya,
+      this.collisionSystem
     )
     this.npcs.push(chaiCust2)
     this.group.add(chaiCust2.group)

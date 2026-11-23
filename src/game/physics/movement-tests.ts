@@ -44,6 +44,8 @@ function createInput(overrides: Partial<InputState> = {}): InputState {
     right: false,
     jump: false,
     sprint: false,
+    interact: false,
+    handbrake: false,
     movementX: 0,
     movementY: 0,
     scrollDelta: 0,

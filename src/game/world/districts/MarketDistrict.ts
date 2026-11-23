@@ -234,48 +234,8 @@ export class MarketDistrict {
     // Lightweight Indian coastal-town street environment props
     // =========================================================================
 
-    // A. Parked Vintage Indian Geared Scooters (Bajaj Chetak style)
-    // Scooter 1: Parked near Chai Stall curb outside Shop Cluster
-    DistrictHelper.addBlenderScooter(
-      this.group,
-      collisionSystem,
-      27.5,
-      25.2,
-      Math.PI * 0.75,
-      'Market_Scooter_ChaiStall'
-    )
-
-    // Scooter 2: Parked near Pharmacy / Mobile Care curb
-    DistrictHelper.addBlenderScooter(
-      this.group,
-      collisionSystem,
-      27.5,
-      38.5,
-      Math.PI * 0.25,
-      'Market_Scooter_Pharmacy'
-    )
-
-    // B. Classic Delivery Roadster Bicycle with Milk Cans & Tiffins
-    // Leaning outside Kirana Grocery Store
-    DistrictHelper.addBlenderBicycle(
-      this.group,
-      collisionSystem,
-      27.2,
-      35.0,
-      Math.PI * 0.15,
-      'Market_Bicycle_Kirana'
-    )
-
-    // C. Parked Indian Auto-Rickshaw at Market Bazaar South Entrance Curb
-    DistrictHelper.addAutoRickshaw(
-      this.group,
-      collisionSystem,
-      materials,
-      46.8,
-      23.0,
-      -Math.PI * 0.25,
-      'Market_Rickshaw_Entrance'
-    )
+    // Vehicles (Scooters, Delivery Bicycle, Auto-Rickshaw) are dynamically managed by VehicleManager for active drivability
+    // (Chai Stall Scooter, Pharmacy Scooter, Kirana Bicycle, Market Entrance Rickshaw)
 
     // D. Modular Concrete Drainage Gutters with Cast-Iron Storm Grates
     // West Curb line (X = 29.6)
@@ -370,8 +330,8 @@ export class MarketDistrict {
     DistrictHelper.addPromenadeBench(
       this.group,
       collisionSystem,
-      materials,
       46.5,
+      0,
       70.0,
       -Math.PI / 2,
       'Market_Bench_East'
@@ -382,7 +342,9 @@ export class MarketDistrict {
       materials,
       47.5,
       76.0,
-      1.1,
+      7.5,
+      0.15,
+      Math.PI / 4,
       'Market_Palm_East'
     )
     DistrictHelper.addCoconutPalm(
@@ -391,7 +353,9 @@ export class MarketDistrict {
       materials,
       28.0,
       76.0,
-      1.05,
+      7.5,
+      0.15,
+      Math.PI / 4,
       'Market_Palm_West'
     )
 
@@ -408,10 +372,9 @@ export class MarketDistrict {
       DistrictHelper.addUtilityPole(
         this.group,
         collisionSystem,
-        materials,
         p.x,
         p.z,
-        6.2,
+        0,
         p.name
       )
     }

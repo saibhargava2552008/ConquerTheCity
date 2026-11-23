@@ -279,4 +279,8 @@ export class PlayerController {
     this.verticalVelocity = 0
     this.isGrounded = true
   }
+
+  public getFacingAngle(): number {
+    return this.facingAngle
+  }
 }

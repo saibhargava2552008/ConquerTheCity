@@ -155,4 +155,19 @@ export class ThirdPersonCamera {
     this.camera.position.copy(this.currentCameraPos)
     this.camera.lookAt(this.currentLookTarget)
   }
+
+  /**
+   * Configures camera mode for vehicle driving vs on-foot exploration
+   */
+  public setDrivingMode(isDriving: boolean, targetDistance = 5.8, targetHeight = 1.8): void {
+    if (isDriving) {
+      this.distance = targetDistance
+      this.headOffset.set(0, targetHeight, 0)
+      this.pitch = 0.28
+    } else {
+      this.distance = 4.8
+      this.headOffset.set(0, 1.5, 0)
+      this.pitch = 0.25
+    }
+  }
 }
